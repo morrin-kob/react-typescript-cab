@@ -1,0 +1,23 @@
+{
+  "name": "material-ui",
+  "version": "3.0.0",
+  "description": "hello world starter",
+  "keywords": [
+    "react",
+    "material"
+  ],
+  "homepage": "https://codesandbox.io/s/4j7m47vlm4",
+  "main": "index.js",
+  "dependencies": {
+    "@emotion/react": "latest",
+    "@emotion/styled": "latest",
+    "@mui/icons-material": "latest",
+    "@mui/material": "5.8.7",
+    "@mui/x-data-grid": "latest",
+    "material-ui-popup-state": "^2.0.0",
+    "react": "latest",
+    "react-dom": "latest",
+    "react-router-dom": "6.3.0",
+    "typescript": "4.7.4"
+  }
+}
