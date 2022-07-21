@@ -42,7 +42,7 @@ import {
 import { useRef } from "react";
 import { RoundaboutLeft } from "@mui/icons-material";
 
-import PersonImage from "../Assets/Images/person.png";
+import DefPersonImg from "../assets/images/person.png";
 
 export type AddrBlock = {
   kindof: "home" | "office" | null;
@@ -295,6 +295,39 @@ const OutRecord = (rec: RecordType) => {
         return "";
       });
     }
+
+    // e-mail
+    if (rec.emails && rec.emails.length) {
+      let emailData = {};
+      let order = [];
+      rec.emails.map((email) => {
+        // 携帯:cell/自宅:home/会社:office
+        let title =
+          email.kindof === "home"
+            ? "Eメール[自宅]"
+            : email.kindof === "cell"
+            ? "Eメール[携帯]"
+            : email.kindof === "office"
+            ? "Eメール[会社]"
+            : email.label
+            ? `Eメール[${email.label}]`
+            : "Eメール[その他]";
+        if (emailData[title]) {
+          emailData[title].push(email.address);
+        } else {
+          order.push(title);
+          emailData[title] = [email.address];
+        }
+
+        return "";
+      });
+
+      order.map((title) => {
+        let emails = emailData[title].join("\n");
+        rows.push(createData(title, emails));
+        return "";
+      });
+    }
   }
 
   return rows;
@@ -378,7 +411,11 @@ export default class ABRecDialog extends React.Component<
         <div>
           <Box display="grid" gridTemplateColumns="repeat(12, 1fr)" gap={2}>
             <Box gridColumn="span 2">
-              <img src={PersonImage} style={{ width: 64, height: 64 }} alt="" />
+              <img
+                src={DefPersonImg}
+                style={{ width: 64, height: 64 }}
+                alt=""
+              />
             </Box>
             <Box gridColumn="span 10">
               <Table aria-label="simple table">
