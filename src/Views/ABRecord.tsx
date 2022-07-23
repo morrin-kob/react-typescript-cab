@@ -11,6 +11,8 @@ import Box from "@mui/material/Box";
 import PersonIcon from "@mui/icons-material/Person";
 import PersonOutlineTwoToneIcon from "@mui/icons-material/PersonOutlineTwoTone";
 import AddLocationAltOutlinedIcon from "@mui/icons-material/AddLocationAltOutlined";
+import CloseIcon from "@mui/icons-material/Close";
+import IconButton from "@mui/material/IconButton";
 import Table from "@mui/material/Table";
 import TableBody from "@mui/material/TableBody";
 import TableCell from "@mui/material/TableCell";
@@ -41,6 +43,7 @@ import {
 } from "@mui/x-data-grid";
 import { useRef } from "react";
 import { RoundaboutLeft } from "@mui/icons-material";
+import { SvgIcon } from "@mui/material";
 
 import DefPersonImg from "../assets/images/person.png";
 
@@ -189,15 +192,31 @@ export const ReformNameYomi = (rec: RecordType) => {
   return name;
 };
 
-function createData(
+type RecDataProps = {
+  title: string;
+  data: string;
+  icon?: typeof SvgIcon;
+  link?: string;
+  command: string;
+};
+
+type createDataType = (
   title: string,
   data: string,
-  icon: object = null,
-  link: string = "",
-  command: string = ""
-) {
+  icon?: typeof SvgIcon,
+  link?: string,
+  command?: string
+) => RecDataProps;
+
+const createData: createDataType = (
+  title,
+  data,
+  icon = undefined,
+  link = "",
+  command = ""
+) => {
   return { title, data, icon, link, command };
-}
+};
 
 //
 // 1レコードの詳細データの出力
@@ -234,7 +253,7 @@ const OutRecord = (rec: RecordType) => {
       }
 
       let addressData = "";
-      let icon = null;
+      let icon: typeof SvgIcon = undefined;
       let link = "";
       let command = "";
       if (address.zipcode) addressData += `〒${address.zipcode}\n`;
@@ -260,7 +279,7 @@ const OutRecord = (rec: RecordType) => {
     // 電話番号
     if (rec.telephones && rec.telephones.length) {
       let telData = {};
-      let order = [];
+      let order: string[] = [];
       rec.telephones.map((tel) => {
         // 自宅TEL:tel/自宅FAX:fax/個人携帯:cell/会社TEL:offtel/会社FAX:offfax/会社携帯:offcell/その他:null
         let title =
@@ -299,7 +318,7 @@ const OutRecord = (rec: RecordType) => {
     // e-mail
     if (rec.emails && rec.emails.length) {
       let emailData = {};
-      let order = [];
+      let order: string[] = [];
       rec.emails.map((email) => {
         // 携帯:cell/自宅:home/会社:office
         let title =
@@ -328,6 +347,9 @@ const OutRecord = (rec: RecordType) => {
         return "";
       });
     }
+    // 写真
+
+    // 最終更新
   }
 
   return rows;
@@ -342,13 +364,13 @@ export default class ABRecDialog extends React.Component<
 > {
   constructor(props: ABRecDialogPropsType) {
     super(props);
-    this.state = {
+    //    this.user = useContext(UserContext);
+    state = {
       open: false,
       id: "",
       name: "",
       data: { id: "" }
     };
-    //    this.user = useContext(UserContext);
   }
 
   handleClose = () => {
@@ -481,7 +503,20 @@ export default class ABRecDialog extends React.Component<
 
     return (
       <Dialog open={this.state.open} onClose={this.handleClose}>
-        <DialogTitle sx={{ width: 600 }}>{name}</DialogTitle>
+        <DialogTitle sx={{ width: 600 }}>
+          {name}
+          <IconButton
+            aria-label="close"
+            onClick={this.handleClose}
+            sx={{
+              position: "absolute",
+              right: 8,
+              top: 8
+            }}
+          >
+            <CloseIcon />
+          </IconButton>
+        </DialogTitle>
         <DialogContent>{cont}</DialogContent>
         <DialogActions>
           {buttons.map((button) => {

@@ -9,18 +9,24 @@ import { ContentsPropsType } from "../AppSettings";
 import Box from "@mui/material/Box";
 import Drawer from "@mui/material/Drawer";
 import List from "@mui/material/List";
-import Divider from "@mui/material/Divider";
+import Grid from "@mui/material/Grid";
+import DialogTitle from "@mui/material/DialogTitle";
 import ListItem from "@mui/material/ListItem";
 import IconButton from "@mui/material/IconButton";
+import CloseIcon from "@mui/icons-material/Close";
 import MenuIcon from "@mui/icons-material/Menu";
 import DialogContentText from "@mui/material/DialogContentText";
 import Alert from "@mui/material/Alert";
 import CircularProgress from "@mui/material/CircularProgress";
 import MenuItem from "@mui/material/MenuItem";
 import SourceIcon from "@mui/icons-material/Source";
+import PostAddIcon from "@mui/icons-material/PostAdd";
+import FolderSharedIcon from "@mui/icons-material/FolderShared";
 import InfoIcon from "@mui/icons-material/Info";
 import PaletteIcon from "@mui/icons-material/Palette";
 import LinearProgress from "@mui/material/LinearProgress";
+import Divider from "@mui/material/Divider";
+import Button from "@mui/material/Button";
 
 function WarningBlock(props: { message: string }) {
   let alert = null;
@@ -35,10 +41,12 @@ function WarningBlock(props: { message: string }) {
 //
 // サイドバーに並べる住所録リスト
 //
-function CABBookList(props) {
-  const [abooks, setABooks] = React.useState([]);
-  const [abook, setABook] = React.useState("");
-  const [error, setError] = React.useState("");
+function CABBookList(props: {
+  handleSetABook: (info: ContentsPropsType) => void;
+}) {
+  const [abooks, setABooks] = React.useState<ContentsPropsType[]>([]);
+  const [abook, setABook] = React.useState<ContentsPropsType>({});
+  const [error, setError] = React.useState<string>("");
 
   const user = useContext(UserContext);
 
@@ -54,7 +62,7 @@ function CABBookList(props) {
       //console.log( JSON.stringify(json) );
       if (parseInt(json["statusCode"], 10) === 401) {
         user.RefreshAndRetry(endpoint, "GET", params, (json: {}) => {
-          if ("data" in json) setABook(json["data"]);
+          if ("data" in json) setABooks(json["data"]);
           else setError(json["error"] || json["message"]);
         });
       } else {
@@ -91,11 +99,11 @@ function CABBookList(props) {
                     }}
                     key={index}
                     sx={{ height: "32px" }}
+                    divider={true}
                   >
                     <SourceIcon color="info" />
                     &nbsp;{info.name}({info.summary.count})
                   </MenuItem>
-                  <Divider />
                 </>
               ))}
             </List>
@@ -145,11 +153,12 @@ function CABSidebar(props: {
   };
 
   // CABコンテンツ
-  const cab_list = (anchor) => (
+  const cab_list = (anchor: string) => (
     <Box
-      sx={{ width: anchor === "top" || anchor === "bottom" ? "auto" : 250 }}
+      sx={{
+        width: anchor === "top" || anchor === "bottom" ? "auto" : 250
+      }}
       role="presentation"
-      onKeyDown={toggleDrawer(anchor, false)}
     >
       <CABBookList
         handleSetABook={(info: ContentsPropsType) => {
@@ -176,12 +185,54 @@ function CABSidebar(props: {
         >
           <MenuIcon />
         </IconButton>
+
         <Drawer
           anchor={props.dir}
           open={state[props.dir]}
           onClose={toggleDrawer(props.dir, false)}
+          onKeyDown={toggleDrawer(props.dir, false)}
         >
-          {cab_list(props.dir)}
+          <DialogTitle sx={{ m: 0, p: 2 }}>
+            {"住所録グループ"}
+            <IconButton
+              aria-label="close"
+              onClick={toggleDrawer(props.dir, false)}
+              sx={{
+                position: "absolute",
+                right: 8,
+                top: 8,
+                color: "white"
+              }}
+            >
+              <CloseIcon />
+            </IconButton>
+          </DialogTitle>
+          <div id="ablist">{cab_list(props.dir)}</div>
+          <div>
+            <Divider />
+            <Button
+              variant="contained"
+              color="primary"
+              startIcon={<PostAddIcon />}
+            >
+              {"住所録を追加　▼"}
+            </Button>
+            <Divider />
+            <MenuItem
+              onClick={() => {
+                props.handlerHamberger({
+                  id: "homeaddresses",
+                  name: "マイプロフィール"
+                });
+              }}
+              color="error"
+              sx={{ height: "32px" }}
+              divider={true}
+            >
+              <FolderSharedIcon color="error" />
+              &nbsp;マイプロフィール
+            </MenuItem>
+          </div>
         </Drawer>
       </React.Fragment>
     </>

@@ -3,26 +3,25 @@ import React, {
   useEffect,
   useMemo,
   ReactNode,
-  ReactNodeArray,
-  cloneElement,
-  ReactElement,
   Children,
   PropsWithChildren
 } from "react";
 import { UserContext, UserContextType } from "../Account";
 import ABRecDialog, { RecordType, ReformName } from "./ABRecord";
+import CheckableEditableTable, {
+  CETColumnType
+} from "../components/TableWithCheck";
 import DialogContentText from "@mui/material/DialogContentText";
 import Box from "@mui/material/Box";
-import List from "@mui/material/List";
-import MenuItem from "@mui/material/MenuItem";
-import Divider from "@mui/material/Divider";
-import Alert from "@mui/material/Alert";
-import WysiwygIcon from "@mui/icons-material/Wysiwyg";
-import ListAltIcon from "@mui/icons-material/ListAlt";
-import SourceIcon from "@mui/icons-material/Source";
-import MenuIcon from "@mui/icons-material/Menu";
-import IconButton from "@mui/material/IconButton";
-import Drawer from "@mui/material/Drawer";
+import Table from "@mui/material/Table";
+import TableBody from "@mui/material/TableBody";
+import TableCell from "@mui/material/TableCell";
+import TableContainer from "@mui/material/TableContainer";
+import TableHead from "@mui/material/TableHead";
+import TablePagination from "@mui/material/TablePagination";
+import TableRow from "@mui/material/TableRow";
+import Checkbox from "@mui/material/Checkbox";
+import DeleteIcon from "@mui/icons-material/Delete";
 
 import {
   AppVal,
@@ -60,7 +59,12 @@ function loadAddress(
   whenLoad: (data: {}) => void
 ) {
   // addresses/[group_id]/list
-  let url = `${user.getEpt()}/addresses/${abook.id}/list`;
+  let url = user.getEpt();
+  if (abook.id === "homeaddresses") {
+    url += "/homeaddresses/list";
+  } else {
+    url += `/addresses/${abook.id}/list`;
+  }
   //console.log( 'ajaxGet( '+url+', {access_token: '+user.getAToken()+', groupid: '+abook['id']+'} )' );
   let params = {
     atk: user.getAToken(),
@@ -92,6 +96,8 @@ function get_liner_Progress() {
 function CABAddressList(props: { abook: ContentsPropsType }) {
   const user = useContext(UserContext);
   const [loaded, setLoaded] = React.useState(false);
+  const [page, setPage] = React.useState(0);
+  const [rowsPerPage, setRowsPerPage] = React.useState(25);
   const recdlg = useRef(null);
 
   let cont = null;
@@ -109,6 +115,16 @@ function CABAddressList(props: { abook: ContentsPropsType }) {
 
   const handleRowSelection = (e: {}) => {
     alert(JSON.stringify(e));
+  };
+
+  const handleChangePage = (event: unknown, newPage: number) => {
+    setPage(newPage);
+  };
+  const handleChangeRowsPerPage = (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    setRowsPerPage(+event.target.value);
+    setPage(0);
   };
 
   if (abinfo.addressData == null) {
@@ -142,12 +158,27 @@ function CABAddressList(props: { abook: ContentsPropsType }) {
       );
     }
   } else {
-    const columns: GridColDef[] = [
+    const columns: CETColumnType[] = [
       // : GridColDef[]
-      { field: "name", headerName: "氏名", width: 200 },
-      { field: "address", headerName: "住所", width: 500 },
-      { field: "telephone", headerName: "電話番号", width: 200 }
+      {
+        id: "name",
+        label: "氏名",
+        minWidth: 60,
+        maxWidth: 80
+      },
+      {
+        id: "address",
+        label: "住所",
+        minWidth: 120
+      },
+      {
+        id: "telephone",
+        label: "電話番号",
+        minWidth: 50,
+        maxWidth: 100
+      }
     ];
+
     /*
     let rows: GridRowsProp = [
       //: GridRowsProp
@@ -222,9 +253,28 @@ function CABAddressList(props: { abook: ContentsPropsType }) {
 
     cont = (
       <div style={{ height: "100%", width: "100%" }}>
-        <DataGrid
+        <CheckableEditableTable
+          tableTitle=""
+          columns={columns}
+          rowHSize="medium"
+          rowPerPageOptions={[25, 50, 100]}
+          keyField="id"
+          labelField="name"
+          rows={rows}
+          onEdit={(key: string) => {}}
+          checkTarget={{
+            icon: DeleteIcon,
+            commandTip: "削除",
+            onClick: (sels: readonly string[]) => {
+              alert("削除");
+            }
+          }}
+        />
+
+        {/* <DataGrid
           rows={rows}
           columns={columns}
+          checkboxSelection
           onCellClick={(
             params: GridCellParams,
             event: MuiEvent<React.MouseEvent>
@@ -236,7 +286,7 @@ function CABAddressList(props: { abook: ContentsPropsType }) {
             });
             event.defaultMuiPrevented = true;
           }}
-        />
+        /> */}
         <ABRecDialog user={user} abook={props.abook} ref={recdlg} />
       </div>
     );
@@ -255,7 +305,6 @@ export type CABCtrlBarProps = {
 class CABCtrlBar extends React.Component<CABCtrlBarProps, ContentsPropsType> {
   constructor(props: CABCtrlBarProps) {
     super(props);
-
     this.state = {
       //      filter: props.abook.filter || "",
       //      tags: props.abook.tags,
