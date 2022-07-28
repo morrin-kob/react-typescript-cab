@@ -1,4 +1,5 @@
 import * as React from "react";
+import { Component, ReactNode, useContext } from "react";
 import { UserContext, UserContextType } from "../Account";
 import Button from "@mui/material/Button";
 import TextField from "@mui/material/TextField";
@@ -8,7 +9,7 @@ import DialogContent from "@mui/material/DialogContent";
 import DialogContentText from "@mui/material/DialogContentText";
 import DialogTitle from "@mui/material/DialogTitle";
 import Link from "@mui/material/Link";
-import PulldownMenu from "./PulldownMenu";
+import PulldownMenu from "./PulldownMenuButton";
 import { reformText } from "../AppSettings";
 import Alert from "@mui/material/Alert";
 
@@ -19,6 +20,7 @@ import InputAdornment from "@mui/material/InputAdornment";
 import IconButton from "@mui/material/IconButton";
 import Visibility from "@mui/icons-material/Visibility";
 import VisibilityOff from "@mui/icons-material/VisibilityOff";
+import AccountCircle from "@mui/icons-material/AccountCircle";
 
 function emailValidation(value: string) {
   if (!value) return "メールアドレスを入力してください";
@@ -49,20 +51,21 @@ function WarningBlock(props: WarningBlockProps) {
 
 export type LoginButtonProps = {
   text: string;
-  user: UserContextType;
 };
 function LoginButton(props: LoginButtonProps) {
   let text = props.text || "Login";
+  const user = useContext(UserContext);
+
   const [open, setOpen] = React.useState(false);
-  const [email, setEmail] = React.useState(props.user.getUserEmail());
-  const [uag, setUag] = React.useState(props.user.getUag());
+  const [email, setEmail] = React.useState(user.getUserEmail());
+  const [uag, setUag] = React.useState(user.getUag());
   const [scd, setScd] = React.useState("");
-  const [ept, setEpt] = React.useState(props.user.getEpt());
-  const [eps, setEps] = React.useState(props.user.getEps());
-  const [epm, setEpm] = React.useState(props.user.getEpm());
-  const [cid, setCid] = React.useState(props.user.getCid());
-  const [cse, setCse] = React.useState(props.user.getCse());
-  const [csr, setCsr] = React.useState(props.user.getCsr());
+  const [ept, setEpt] = React.useState(user.getEpt());
+  const [eps, setEps] = React.useState(user.getEps());
+  const [epm, setEpm] = React.useState(user.getEpm());
+  const [cid, setCid] = React.useState(user.getCid());
+  const [cse, setCse] = React.useState(user.getCse());
+  const [csr, setCsr] = React.useState(user.getCsr());
   const [password, setPassword] = React.useState("");
   const [message, setMessage] = React.useState("");
   const [showPassword, setShowPassword] = React.useState(false);
@@ -119,7 +122,7 @@ function LoginButton(props: LoginButtonProps) {
     }
 
     //handleClose();
-    props.user.Login(
+    user.Login(
       email,
       password,
       uag,
@@ -190,7 +193,11 @@ function LoginButton(props: LoginButtonProps) {
   //variant="outlined"
   return (
     <div>
-      <Button variant="contained" color="info" onClick={handleClickOpen}>
+      <Button
+        sx={{ backgroundColor: "#608080" }}
+        variant="contained"
+        onClick={handleClickOpen}
+      >
         {text}
       </Button>
 
@@ -336,7 +343,9 @@ export type AccountButtonProps = {
   logoff: () => void;
 };
 
-function AccountButton(props: AccountButtonProps) {
+function AccountButton(props: any) {
+  const user = useContext(UserContext);
+
   const items = [
     {
       text: "アカウント設定",
@@ -353,11 +362,23 @@ function AccountButton(props: AccountButtonProps) {
     {
       text: "ログオフ",
       handler: () => {
-        props.logoff();
+        user.Logoff();
       }
     }
   ];
-  return <PulldownMenu account={true} text={props.userName} items={items} />;
+  return user.isUserLoggedIn() ? (
+    <PulldownMenu
+      tipText="アカウント設定・ログオフなど"
+      popupId="acc-settings"
+      bgcolor="#303030"
+      icon={AccountCircle}
+      iconColor="#c00000"
+      text={user.getUserName()}
+      items={items}
+    />
+  ) : (
+    <LoginButton text="ログイン" />
+  );
 }
 
 export { LoginButton, AccountButton };

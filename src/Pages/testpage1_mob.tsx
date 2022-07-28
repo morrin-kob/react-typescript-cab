@@ -3,7 +3,7 @@ import CABBaseLayout from "../Views/CABBaseLayout";
 import "../App.css";
 import { useParams } from "react-router-dom";
 
-export const Test1: React.FC = () => {
+export const Test1_mob: React.FC = () => {
   //export class Test1 extends React.Component{
   let { category, id } = useParams();
   //  const { id } = useParams();
@@ -15,7 +15,7 @@ export const Test1: React.FC = () => {
       loginable={true}
       contents={
         <>
-          <p>This is the test page #1.</p>
+          <p>This is the test page #1. for mobile phone.</p>
           <p>Category = {category}</p>
           <p>ID = {id}</p>
         </>

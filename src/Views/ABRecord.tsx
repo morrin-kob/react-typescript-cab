@@ -1,51 +1,25 @@
-import React, { useContext, useEffect, useMemo } from "react";
+//import React, { useContext, useEffect, useMemo } from "react";
+import * as React from "react";
 import { UserContext, UserContextType } from "../Account";
 import Dialog from "@mui/material/Dialog";
 import DialogTitle from "@mui/material/DialogTitle";
-import DialogContentText from "@mui/material/DialogContentText";
 import DialogActions from "@mui/material/DialogActions";
 import DialogContent from "@mui/material/DialogContent";
-import TextField from "@mui/material/TextField";
 import Button from "@mui/material/Button";
 import Box from "@mui/material/Box";
-import PersonIcon from "@mui/icons-material/Person";
-import PersonOutlineTwoToneIcon from "@mui/icons-material/PersonOutlineTwoTone";
 import AddLocationAltOutlinedIcon from "@mui/icons-material/AddLocationAltOutlined";
 import CloseIcon from "@mui/icons-material/Close";
 import IconButton from "@mui/material/IconButton";
 import Table from "@mui/material/Table";
 import TableBody from "@mui/material/TableBody";
 import TableCell from "@mui/material/TableCell";
-import TableContainer from "@mui/material/TableContainer";
-import TableHead from "@mui/material/TableHead";
 import TableRow from "@mui/material/TableRow";
-import Divider from "@mui/material/Divider";
-import Paper from "@mui/material/Paper";
-import Alert from "@mui/material/Alert";
-import WysiwygIcon from "@mui/icons-material/Wysiwyg";
-import ListAltIcon from "@mui/icons-material/ListAlt";
-import SourceIcon from "@mui/icons-material/Source";
-import {
-  AppVal,
-  ajaxGet,
-  ajaxPost,
-  reformText,
-  ContentsPropsType
-} from "../AppSettings";
+import { AppVal, ajaxGet, ajaxPost, ContentsPropsType } from "../AppSettings";
 import CircularProgress from "@mui/material/CircularProgress";
-import LinearProgress from "@mui/material/LinearProgress";
-import {
-  DataGrid,
-  GridRowsProp,
-  GridColDef,
-  GridCellParams,
-  MuiEvent
-} from "@mui/x-data-grid";
-import { useRef } from "react";
-import { RoundaboutLeft } from "@mui/icons-material";
 import { SvgIcon } from "@mui/material";
-
 import DefPersonImg from "../assets/images/person.png";
+import { isMobile } from "react-device-detect";
+import { BrowserView, MobileView } from "react-device-detect";
 
 export type AddrBlock = {
   kindof: "home" | "office" | null;
@@ -148,7 +122,7 @@ type ABRecDialogPropsType = {
 
 type ABRecDialogStateType = {
   open: boolean;
-  id: string;
+  recid: string;
   name: string;
   data: RecordType;
 };
@@ -195,7 +169,7 @@ export const ReformNameYomi = (rec: RecordType) => {
 type RecDataProps = {
   title: string;
   data: string;
-  icon?: typeof SvgIcon;
+  icon?: typeof SvgIcon | null;
   link?: string;
   command: string;
 };
@@ -203,7 +177,7 @@ type RecDataProps = {
 type createDataType = (
   title: string,
   data: string,
-  icon?: typeof SvgIcon,
+  icon?: typeof SvgIcon | null,
   link?: string,
   command?: string
 ) => RecDataProps;
@@ -211,7 +185,7 @@ type createDataType = (
 const createData: createDataType = (
   title,
   data,
-  icon = undefined,
+  icon = null,
   link = "",
   command = ""
 ) => {
@@ -223,8 +197,13 @@ const createData: createDataType = (
 //
 const OutRecord = (rec: RecordType) => {
   const rows = [];
+
+  if (rec.tags && rec.tags.length) {
+    rows.push(createData("タグ", rec.tags.join(" ")));
+  }
+
   const furigana = ReformNameYomi(rec);
-  rows.push(createData("フリガナ", furigana));
+  if (furigana) rows.push(createData("フリガナ", furigana));
 
   if (rec.organization) {
     if (rec.organization.name)
@@ -253,10 +232,11 @@ const OutRecord = (rec: RecordType) => {
       }
 
       let addressData = "";
-      let icon: typeof SvgIcon = undefined;
+      let icon: typeof SvgIcon | null = null;
       let link = "";
       let command = "";
-      if (address.zipcode) addressData += `〒${address.zipcode}\n`;
+      if (address.zipcode && address.zipcode.length)
+        addressData += `〒${address.zipcode}\n`;
       let addr = `${address.region ? address.region : ""}${
         address.city ? address.city : ""
       }${address.street ? address.street : ""}`;
@@ -365,9 +345,9 @@ export default class ABRecDialog extends React.Component<
   constructor(props: ABRecDialogPropsType) {
     super(props);
     //    this.user = useContext(UserContext);
-    state = {
+    this.state = {
       open: false,
-      id: "",
+      recid: "",
       name: "",
       data: { id: "" }
     };
@@ -378,9 +358,14 @@ export default class ABRecDialog extends React.Component<
   };
 
   render() {
-    if (this.state.data.id !== this.state.id) {
+    if (this.state.data.id !== this.state.recid) {
       // load
-      let url = `${this.props.user.getEpt()}/address/${this.state.id}`;
+      let url = `${this.props.user.getEpt()}/`;
+      if (this.props.abook.dataType === "abook") {
+        url += `address/${this.state.recid}`;
+      } else if (this.props.abook.dataType === "profile") {
+        url += `homeaddress/${this.state.recid}`;
+      }
       let params = {
         atk: this.props.user.getAToken(),
         ept: this.props.user.getEpm(),
@@ -397,7 +382,7 @@ export default class ABRecDialog extends React.Component<
               if ("data" in json) {
                 rec = { ...this.state.data, ...json["data"] };
               } else {
-                let error =
+                let error: string =
                   json["error"] ||
                   json["statusMessage"] ||
                   "ロードに失敗しました";
@@ -406,9 +391,9 @@ export default class ABRecDialog extends React.Component<
               this.setState({ data: rec });
             });
           } else {
-            let error =
+            let error: string =
               json["error"] || json["statusMessage"] || "ロードに失敗しました";
-            rec = { ...this.state.data, error: error };
+            rec = { ...this.state.data, ...{ error: error } };
             this.setState({ data: rec });
           }
         }
@@ -418,11 +403,11 @@ export default class ABRecDialog extends React.Component<
     let name = this.state.name;
     let cont = (
       <Box sx={{ width: "100%", mt: 10, textAlign: "center" }}>
-        <div>{this.state.id}</div>
+        <div sx={{ height: "5em" }}></div>
         <CircularProgress />
       </Box>
     );
-    if (this.state.data.id && this.state.data.id === this.state.id) {
+    if (this.state.data.id && this.state.data.id === this.state.recid) {
       const rec: RecordType = this.state.data;
       name = ReformName(rec);
 
@@ -466,7 +451,7 @@ export default class ABRecDialog extends React.Component<
                       >
                         {row.icon && row.link && (
                           <a href={row.link} target="cabhref">
-                            <row.icon size="large" />
+                            <row.icon />
                           </a>
                         )}
                       </TableCell>
@@ -491,9 +476,24 @@ export default class ABRecDialog extends React.Component<
         | "warning";
       onclick: () => void;
     };
-    function makeButton(caption, color, onclick) {
+
+    type MakeButtonType = (
+      caption: string,
+      color:
+        | "inherit"
+        | "primary"
+        | "secondary"
+        | "success"
+        | "error"
+        | "info"
+        | "warning",
+      onclick: () => void
+    ) => DlgButtonProps;
+
+    const makeButton: MakeButtonType = (caption, color, onclick) => {
       return { caption: caption, color: color, onclick: onclick };
-    }
+    };
+
     const buttons: DlgButtonProps[] = [];
     buttons.push(makeButton("削除", "warning", this.handleClose));
     buttons.push(makeButton("他のユーザに送信", "primary", this.handleClose));
@@ -501,14 +501,16 @@ export default class ABRecDialog extends React.Component<
     buttons.push(makeButton("編集", "success", this.handleClose));
     buttons.push(makeButton("閉じる", "primary", this.handleClose));
 
+    let cxDlg = isMobile ? "100%" : "70%";
     return (
       <Dialog open={this.state.open} onClose={this.handleClose}>
-        <DialogTitle sx={{ width: 600 }}>
+        <DialogTitle sx={{ width: { cxDlg }, maxWidth: 600 }}>
           {name}
           <IconButton
             aria-label="close"
             onClick={this.handleClose}
             sx={{
+              color: "white",
               position: "absolute",
               right: 8,
               top: 8

@@ -1,17 +1,14 @@
-import React, { useContext, useEffect, useMemo } from "react";
+import * as React from "react";
+import { useContext, useEffect, useMemo } from "react";
 import "../App.css";
-import { AppVal, ajaxGet } from "../AppSettings";
 import { UserContext } from "../Account";
-import { useRef } from "react";
-import { ContentsPropsType } from "../AppSettings";
+import { AppVal, ajaxGet, ajaxPost, ContentsPropsType } from "../AppSettings";
 
-//import * as React from 'react';
 import Box from "@mui/material/Box";
 import Drawer from "@mui/material/Drawer";
 import List from "@mui/material/List";
 import Grid from "@mui/material/Grid";
 import DialogTitle from "@mui/material/DialogTitle";
-import ListItem from "@mui/material/ListItem";
 import IconButton from "@mui/material/IconButton";
 import CloseIcon from "@mui/icons-material/Close";
 import MenuIcon from "@mui/icons-material/Menu";
@@ -22,11 +19,9 @@ import MenuItem from "@mui/material/MenuItem";
 import SourceIcon from "@mui/icons-material/Source";
 import PostAddIcon from "@mui/icons-material/PostAdd";
 import FolderSharedIcon from "@mui/icons-material/FolderShared";
-import InfoIcon from "@mui/icons-material/Info";
-import PaletteIcon from "@mui/icons-material/Palette";
-import LinearProgress from "@mui/material/LinearProgress";
 import Divider from "@mui/material/Divider";
 import Button from "@mui/material/Button";
+import Badge from "@mui/material/Badge";
 
 function WarningBlock(props: { message: string }) {
   let alert = null;
@@ -45,7 +40,11 @@ function CABBookList(props: {
   handleSetABook: (info: ContentsPropsType) => void;
 }) {
   const [abooks, setABooks] = React.useState<ContentsPropsType[]>([]);
-  const [abook, setABook] = React.useState<ContentsPropsType>({});
+  const [abook, setABook] = React.useState<ContentsPropsType>({
+    dataType: "abook",
+    id: "",
+    name: ""
+  });
   const [error, setError] = React.useState<string>("");
 
   const user = useContext(UserContext);
@@ -95,14 +94,34 @@ function CABBookList(props: {
                 <>
                   <MenuItem
                     onClick={() => {
-                      props.handleSetABook(info);
+                      let ab: ContentsPropsType = info;
+                      ab.dataType = "abook";
+                      props.handleSetABook(ab);
                     }}
                     key={index}
-                    sx={{ height: "32px" }}
+                    sx={{ height: 42 }}
                     divider={true}
                   >
-                    <SourceIcon color="info" />
-                    &nbsp;{info.name}({info.summary.count})
+                    <Grid container columns={12}>
+                      <Grid container={true} item xs={11}>
+                        <SourceIcon sx={{ mr: 1 }} color="info" />
+                        {info.name}
+                      </Grid>
+                      <Grid item xs={1}>
+                        <Badge
+                          max={99999}
+                          sx={{ mb: 2 }}
+                          anchorOrigin={{
+                            vertical: "bottom",
+                            horizontal: "right"
+                          }}
+                          color="info"
+                          badgeContent={info["summary"].count}
+                        >
+                          &nbsp;
+                        </Badge>
+                      </Grid>
+                    </Grid>
                   </MenuItem>
                 </>
               ))}
@@ -127,7 +146,11 @@ function CABSidebar(props: {
 
   const [all, setAll] = React.useState(true);
 
-  const [abook, setABook] = React.useState({ id: "", name: "" });
+  const [abook, setABook] = React.useState<ContentsPropsType>({
+    dataType: "abook",
+    id: "",
+    name: ""
+  });
 
   const user = useContext(UserContext);
 
@@ -181,7 +204,7 @@ function CABSidebar(props: {
           size="medium"
           style={{ backgroundColor: "transparent" }}
           aria-label="menu"
-          sx={{ mr: 2 }}
+          sx={{ color: "white", mr: 1, mt: -1 }}
         >
           <MenuIcon />
         </IconButton>
@@ -221,6 +244,7 @@ function CABSidebar(props: {
             <MenuItem
               onClick={() => {
                 props.handlerHamberger({
+                  dataType: "profile",
                   id: "homeaddresses",
                   name: "マイプロフィール"
                 });

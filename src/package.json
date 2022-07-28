@@ -2,10 +2,7 @@
   "name": "material-ui",
   "version": "3.0.0",
   "description": "hello world starter",
-  "keywords": [
-    "react",
-    "material"
-  ],
+  "keywords": ["react", "material"],
   "homepage": "https://codesandbox.io/s/4j7m47vlm4",
   "main": "index.js",
   "dependencies": {
@@ -18,6 +15,8 @@
     "react": "latest",
     "react-dom": "latest",
     "react-router-dom": "6.3.0",
-    "typescript": "4.7.4"
+    "typescript": "4.7.4",
+    "@types/react-dom": "latest",
+    "react-device-detect": "latest"
   }
 }

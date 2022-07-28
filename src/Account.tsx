@@ -19,7 +19,8 @@ context は、1つの値を使う場合に比べ、複数の値を持つと
 Typescript で書き換えた。
 エラーは出なくなったがちゃんと動くか分からん
  -----------------------------------------------*/
-import React, { useState, createContext } from "react";
+import * as React from "react";
+import { useState, createContext } from "react";
 import { ajaxGet, ajaxPost } from "./AppSettings";
 
 type ABInfoType = {
@@ -209,54 +210,54 @@ export const UserContextProvider: React.FC<{ children: React.ReactNode }> = ({
   const [user, setValues] = useState<UserData | null>(values);
 
   const isUserLoggedIn = () => {
-    if (!user.isLoggInable) return false;
+    if (!user || !user.isLoggInable) return false;
     return user.isLoggedIn;
   };
   const isUserLoggInable = () => {
-    return user.isLoggInable;
+    return user ? user.isLoggInable : false;
   };
   const SetUserLoggInable = (mode: boolean) => {
-    user.isLoggInable = mode;
-    return user.isLoggInable;
+    if (user) user.isLoggInable = mode;
+    return isUserLoggInable();
   };
   const getUserId = () => {
-    return user.userId;
+    return user ? user.userId : 0;
   };
   const getUserName = () => {
-    return user.userName;
+    return user ? user.userName : "";
   };
   const getUserEmail = () => {
-    return user.email;
+    return user ? user.email : "";
   };
   const getAToken = () => {
-    return isUserLoggedIn() ? user.a_token : "";
+    return user && isUserLoggedIn() ? user.a_token : "";
   };
   const getIDToken = () => {
-    return isUserLoggedIn() ? user.id_token : "";
+    return user && isUserLoggedIn() ? user.id_token : "";
   };
   const getRToken = () => {
-    return isUserLoggedIn() ? user.r_token : "";
+    return user && isUserLoggedIn() ? user.r_token : "";
   };
   const getCid = () => {
-    return user.cid || "";
+    return user ? user.cid || "" : "";
   };
   const getCse = () => {
-    return user.cse || "";
+    return user ? user.cse || "" : "";
   };
   const getCsr = () => {
-    return user.csr || "";
+    return user ? user.csr || "" : "";
   };
   const getUag = () => {
-    return user.uag || "";
+    return user ? user.uag || "" : "";
   };
   const getEpt = () => {
-    return user.ept || "";
+    return user ? user.ept || "" : "";
   };
   const getEps = () => {
-    return user.eps || "";
+    return user ? user.eps || "" : "";
   };
   const getEpm = () => {
-    return user.epm || "";
+    return user ? user.epm || "" : "";
   };
 
   const setABInfo = (info: ABInfoType) => {
@@ -281,7 +282,7 @@ export const UserContextProvider: React.FC<{ children: React.ReactNode }> = ({
     csr: string,
     cbf: (result: { login: boolean; errtxt?: string }) => void
   ) => {
-    if (!user.isLoggInable) return false;
+    if (!user || !user.isLoggInable) return false;
     if (!user.isLoggedIn) {
       ajaxPost(
         ept + "/token",
@@ -371,7 +372,7 @@ export const UserContextProvider: React.FC<{ children: React.ReactNode }> = ({
     }) => void
   ) => {
     ajaxPost(
-      user.ept + "/token",
+      getEpt() + "/token",
       {
         uag: getUag(),
         ept: getEps(),

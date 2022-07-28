@@ -1,23 +1,18 @@
-import React from "react";
-import { Header, Footer } from "../components/Framing";
+import * as React from "react";
+import CABBaseLayout from "../Views/CABBaseLayout";
 import "../App.css";
-import { UserContextProvider } from "../Account";
+import { useParams } from "react-router-dom";
 
-export const Error404: React.FC = (props: any) => {
+export const Error404: React.FC = () => {
   return (
-    <div className="App">
-      <UserContextProvider>
-        <Header appTitle="Cloud Address-Book" subTitle=" test page1" />
-        <div id="outer">
-          <div id="contents-frame">
-            <div id="contents" className="dsp80pc">
-              <h1>HTTP Error 404</h1>
-              <p>The page you specified is not existed.</p>
-              <Footer />
-            </div>
-          </div>
-        </div>
-      </UserContextProvider>
-    </div>
+    <CABBaseLayout
+      loginable={false}
+      contents={
+        <>
+          <h1>HTTP Error 404</h1>
+          <p>The page you specified is not existed.</p>
+        </>
+      }
+    />
   );
 };

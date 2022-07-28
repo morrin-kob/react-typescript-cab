@@ -47,7 +47,7 @@ function Contents(props: ContentsPropsType) {
           <p>
             Hey! what are you doing?
             <br />
-            Just sign in!
+            Just sign-in!
             <br />
             Come on! Rack'n'Roll!
           </p>

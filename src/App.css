@@ -8,7 +8,7 @@
   word-break: break-all;
   box-sizing: border-box;
 }
-
+/*
 @media screen and (min-width: 751px) {
   *,
   *::before,
@@ -25,7 +25,7 @@
     line-height: 1.7em;
   }
 }
-
+*/
 span,
 a {
   line-height: 1em;
@@ -219,11 +219,12 @@ pre {
 /*-- fixed size ------------------------------------------------------------*/
 :root {
   --cy-header: 3.5rem;
-  --cy-filxed-top: 2.2rem;
+  --cy-filxed-top: 2.6rem;
   --cy-footer: 1.8rem;
   --cy-shadow: 3pt;
 
-  --cx-accdisp: 10emm;
+  --cx-logoblock: 200px;
+  --cx-accdisp: 10em;
 }
 /*----------------------------------------------------------------------------*/
 
@@ -275,12 +276,15 @@ header {
 }
 .head-left {
   float: left;
-  width: calc(100% - var(--cx-accdisp) - 1pt);
+  width: var(--cx-logoblock); /*calc(100% - var(--cx-accdisp) - 1pt); */
+  background-color: blue;
 }
 .head-right {
   float: right;
-  width: var(--cx-accdisp);
+  /* width: var(--cx-accdisp); */
+  width: calc(100vw - var(--cx-logoblock) - 1);
   overflow: hidden;
+  background-color: white;
 }
 .head-left .app-title {
   color: var(--col-title);
@@ -391,6 +395,9 @@ h1,
 h2 {
   background-color: #c00000;
   color: white;
+}
+:root {
+  --col-title: white;
 }
 /*----------------------------------------------------------------------------*/
 
@@ -1047,7 +1054,7 @@ a:hover.menuitem3_sel {
 
 .App-header {
   background-color: #282c34;
-  min-height: 100vh;
+  min-height: calc(100vh - 7em);
   display: flex;
   flex-direction: column;
   align-items: center;

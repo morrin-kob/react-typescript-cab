@@ -2,8 +2,8 @@
 // こんな風な管理はReact上は多分間違ってるのでは？
 //
 const AppVal = {
-  AppTitle: "Practice for React",
-  SubTitle: "something like that",
+  AppTitle: "筆まめクラウド住所録",
+  SubTitle: "anytime, anywhere",
   AppVersion: 0.01,
 
   Header: {
@@ -34,6 +34,8 @@ const reformText = (text: string) => {
 type ContentsPropsType = {
   filter?: string;
   tags?: string;
+  orgPriority?: boolean;
+  dataType: "abook" | "profile";
   id: string;
   name: string;
 };

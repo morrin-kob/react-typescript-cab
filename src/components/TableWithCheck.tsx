@@ -1,14 +1,4 @@
-import React, {
-  useContext,
-  useEffect,
-  useMemo,
-  ReactNode,
-  ReactNodeArray,
-  cloneElement,
-  ReactElement,
-  Children,
-  PropsWithChildren
-} from "react";
+import * as React from "react";
 import { alpha } from "@mui/material/styles";
 import Table from "@mui/material/Table";
 import TableBody from "@mui/material/TableBody";
@@ -20,7 +10,6 @@ import TablePagination from "@mui/material/TablePagination";
 import TableRow from "@mui/material/TableRow";
 import Box from "@mui/material/Box";
 import Checkbox from "@mui/material/Checkbox";
-import Toolbar from "@mui/material/Toolbar";
 import Typography from "@mui/material/Typography";
 import IconButton from "@mui/material/IconButton";
 import EditIcon from "@mui/icons-material/Edit";
@@ -101,10 +90,10 @@ function CheckableEditableTableHead(props: CheckableEditableTableHeaderProps) {
 
   return (
     <TableHead>
-      <TableRow>
+      <TableRow sx={{ backgroundColor: "#f0f0f0" }}>
         {/* チェックあり？ */}
         {props.checkTarget ? (
-          <TableCell padding="checkbox">
+          <TableCell padding="checkbox" sx={{ backgroundColor: "#f0f0f0" }}>
             <Checkbox
               color="primary"
               indeterminate={numSelected > 0 && numSelected < rowCount}
@@ -118,6 +107,7 @@ function CheckableEditableTableHead(props: CheckableEditableTableHeaderProps) {
         ) : null}
         {props.columns.map((column) => (
           <TableCell
+            sx={{ backgroundColor: "#f0f0f0" }}
             key={column.id}
             align={column.numeric ? "right" : "left"}
             padding={column.disablePadding ? "none" : "normal"}
@@ -140,7 +130,12 @@ function CheckableEditableTableHead(props: CheckableEditableTableHeaderProps) {
 
         {/* エディット可能？ */}
         {props.editable ? (
-          <TableCell key={"editicon"} align={"center"} padding={"none"}>
+          <TableCell
+            sx={{ backgroundColor: "#f0f0f0" }}
+            key={"editicon"}
+            align={"center"}
+            padding={"none"}
+          >
             <EditIcon />
           </TableCell>
         ) : null}
@@ -167,10 +162,14 @@ const CheckableEditableTableToolbar = (
     : (sels: readonly string[]) => {};
 
   return (
-    <Toolbar
+    <Box
+      display="grid"
+      gridTemplateColumns="repeat(12, 1fr)"
+      gap={2}
       sx={{
         pl: { sm: 2 },
         pr: { xs: 1, sm: 1 },
+        py: 1,
         ...(numSelected > 0 && {
           bgcolor: (theme) =>
             alpha(
@@ -180,39 +179,45 @@ const CheckableEditableTableToolbar = (
         })
       }}
     >
-      {numSelected > 0 ? (
-        <Typography
-          sx={{ flex: "1 1 100%" }}
-          color="inherit"
-          variant="subtitle1"
-          component="div"
-        >
-          {numSelected} selected
-        </Typography>
-      ) : (
-        <Typography
-          sx={{ flex: "1 1 100%" }}
-          variant="h6"
-          id="tableTitle"
-          component="div"
-        >
-          {props.tableTitle}
-        </Typography>
-      )}
-      {props.checkTarget && numSelected > 0 ? (
-        <Tooltip title={props.checkTarget.commandTip}>
-          <IconButton
-            size="medium"
-            color="primary"
-            onClick={(event) => checkCBFunc(props.sellist)}
+      <Box gridColumn="span 4">
+        {numSelected > 0 ? (
+          <Typography
+            sx={{ flex: "1 1 100%" }}
+            color="inherit"
+            variant="subtitle1"
+            align="left"
+            component="div"
           >
-            <props.checkTarget.icon />
-          </IconButton>
-        </Tooltip>
-      ) : (
-        <></>
-      )}
-    </Toolbar>
+            {numSelected} 件選択されてます
+          </Typography>
+        ) : (
+          <Typography
+            sx={{ flex: "1 1 100%" }}
+            variant="h6"
+            align="left"
+            id="tableTitle"
+            component="div"
+          >
+            {props.tableTitle}
+          </Typography>
+        )}
+      </Box>
+      <Box gridColumn="span 1">
+        {props.checkTarget && numSelected > 0 ? (
+          <Tooltip title={props.checkTarget.commandTip}>
+            <IconButton
+              size="small"
+              color="primary"
+              onClick={(event) => checkCBFunc(props.sellist)}
+            >
+              <props.checkTarget.icon />
+            </IconButton>
+          </Tooltip>
+        ) : (
+          <></>
+        )}
+      </Box>
+    </Box>
   );
 };
 
@@ -221,6 +226,7 @@ const CheckableEditableTableToolbar = (
 //////////////////////////////////////////////////////
 export type CheckableEditableTableProps = {
   tableTitle: string;
+  dataType: string;
   columns: CETColumnType[];
   rows: {}[];
   rowHSize: "small" | "medium";
@@ -228,6 +234,7 @@ export type CheckableEditableTableProps = {
   keyField: string;
   labelField: string;
   checkTarget?: CheckTargetProps;
+  onDetail?: (key: string, label: string) => void;
   onEdit?: (key: string, label: string) => void;
 };
 // CheckableEditableTable
@@ -300,10 +307,12 @@ export default function CheckableEditableTable(
       <CheckableEditableTableToolbar
         tableTitle={props.tableTitle}
         sellist={selected}
+        checkTarget={props.checkTarget}
       />
-      <TableContainer>
+      <TableContainer sx={{ maxHeight: "calc( 100vh - 14.00em )" }}>
         <Table
-          sx={{ minWidth: 750 }}
+          stickyHeader
+          sx={{ minWidth: 250 }}
           aria-labelledby="tableTitle"
           size={props.rowHSize}
         >
@@ -327,10 +336,14 @@ export default function CheckableEditableTable(
                 const isItemSelected = isSelected(String(row[props.keyField]));
                 const labelId = `enhanced-table-checkbox-${index}`;
 
+                const showDetailFunc = props.onDetail
+                  ? props.onDetail
+                  : (k: string, l: string) => {};
                 const editCBFunc = props.onEdit
                   ? props.onEdit
                   : (k: string, l: string) => {};
 
+                let fieldData = "";
                 return (
                   <TableRow
                     hover
@@ -358,7 +371,15 @@ export default function CheckableEditableTable(
 
                     {/* ----------- テーブルデータ ----------- */}
                     {props.columns.map((column) => (
-                      <TableCell align={column.align}>
+                      <TableCell
+                        align={column.align}
+                        onClick={(event) =>
+                          showDetailFunc(
+                            row[props.keyField],
+                            row[props.labelField]
+                          )
+                        }
+                      >
                         {row[column.id]}
                       </TableCell>
                     ))}

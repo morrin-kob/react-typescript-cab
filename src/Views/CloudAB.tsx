@@ -1,44 +1,33 @@
-import React, {
-  useContext,
-  useEffect,
-  useMemo,
-  ReactNode,
-  Children,
-  PropsWithChildren
-} from "react";
+import * as React from "react";
+import { useContext, ReactNode, Children } from "react";
 import { UserContext, UserContextType } from "../Account";
 import ABRecDialog, { RecordType, ReformName } from "./ABRecord";
 import CheckableEditableTable, {
   CETColumnType
 } from "../components/TableWithCheck";
-import DialogContentText from "@mui/material/DialogContentText";
 import Box from "@mui/material/Box";
-import Table from "@mui/material/Table";
-import TableBody from "@mui/material/TableBody";
-import TableCell from "@mui/material/TableCell";
-import TableContainer from "@mui/material/TableContainer";
-import TableHead from "@mui/material/TableHead";
-import TablePagination from "@mui/material/TablePagination";
-import TableRow from "@mui/material/TableRow";
-import Checkbox from "@mui/material/Checkbox";
+import Grid from "@mui/material/Grid";
 import DeleteIcon from "@mui/icons-material/Delete";
-
-import {
-  AppVal,
-  ajaxGet,
-  ajaxPost,
-  reformText,
-  ContentsPropsType
-} from "../AppSettings";
-import CircularProgress from "@mui/material/CircularProgress";
+import Paper from "@mui/material/Paper";
+import Divider from "@mui/material/Divider";
+import InputBase from "@mui/material/InputBase";
+import Button from "@mui/material/Button";
+import IconButton from "@mui/material/IconButton";
+import ExpandCircleDownOutlinedIcon from "@mui/icons-material/ExpandCircleDownOutlined";
+import SearchIcon from "@mui/icons-material/Search";
+import SettingsOutlinedIcon from "@mui/icons-material/SettingsOutlined";
+import TuneIcon from "@mui/icons-material/Tune";
+import ShareIcon from "@mui/icons-material/Share";
+import UploadFileIcon from "@mui/icons-material/UploadFile";
+import FileDownloadIcon from "@mui/icons-material/FileDownload";
+import DeleteForeverIcon from "@mui/icons-material/DeleteForever";
+import AccountCircle from "@mui/icons-material/AccountCircle";
+import PersonAddAlt1Icon from "@mui/icons-material/PersonAddAlt1";
+import PulldownMenu, {
+  PulldownMenuItem
+} from "../components/PulldownMenuButton";
+import { AppVal, ajaxGet, ajaxPost, ContentsPropsType } from "../AppSettings";
 import LinearProgress from "@mui/material/LinearProgress";
-import {
-  DataGrid,
-  GridRowsProp,
-  GridColDef,
-  GridCellParams,
-  MuiEvent
-} from "@mui/x-data-grid";
 import { useRef } from "react";
 
 type ABInfoType = {
@@ -48,7 +37,7 @@ type ABInfoType = {
 };
 
 let abinfo: ABInfoType = {
-  addressData: null,
+  addressData: [],
   abloading: false,
   currentabook: ""
 };
@@ -60,12 +49,20 @@ function loadAddress(
 ) {
   // addresses/[group_id]/list
   let url = user.getEpt();
-  if (abook.id === "homeaddresses") {
+  if (abook.dataType === "profile") {
     url += "/homeaddresses/list";
   } else {
     url += `/addresses/${abook.id}/list`;
   }
-  //console.log( 'ajaxGet( '+url+', {access_token: '+user.getAToken()+', groupid: '+abook['id']+'} )' );
+  console.log(
+    "ajaxGet( " +
+      url +
+      ", {access_token: " +
+      user.getAToken() +
+      ", groupid: " +
+      abook["id"] +
+      "} )"
+  );
   let params = {
     atk: user.getAToken(),
     ept: user.getEpm(),
@@ -98,7 +95,8 @@ function CABAddressList(props: { abook: ContentsPropsType }) {
   const [loaded, setLoaded] = React.useState(false);
   const [page, setPage] = React.useState(0);
   const [rowsPerPage, setRowsPerPage] = React.useState(25);
-  const recdlg = useRef(null);
+  //  const recdlg = useRef(null);
+  const recdlg = useRef<ABRecDialog>(null);
 
   let cont = null;
 
@@ -106,7 +104,7 @@ function CABAddressList(props: { abook: ContentsPropsType }) {
     if (abinfo.currentabook.length) {
       if (abinfo.currentabook !== props.abook.id) {
         abinfo.currentabook = props.abook.id;
-        abinfo.addressData = null;
+        abinfo.addressData = [];
         abinfo.abloading = false;
       }
     }
@@ -127,7 +125,26 @@ function CABAddressList(props: { abook: ContentsPropsType }) {
     setPage(0);
   };
 
-  if (abinfo.addressData == null) {
+  const handleOnEdit = (key: string, label: string) => {
+    if (recdlg && recdlg.current) {
+      recdlg.current.setState({
+        recid: key,
+        name: label,
+        open: true
+      });
+    }
+  };
+  const handleOnShowDetail = (key: string, label: string) => {
+    if (recdlg && recdlg.current) {
+      recdlg.current.setState({
+        recid: key,
+        name: label,
+        open: true
+      });
+    }
+  };
+
+  if (!abinfo.addressData || abinfo.addressData.length === 0) {
     if (abinfo.abloading === false) {
       if (!props.abook.id) {
         cont = (
@@ -158,12 +175,12 @@ function CABAddressList(props: { abook: ContentsPropsType }) {
       );
     }
   } else {
-    const columns: CETColumnType[] = [
+    const columns_home: CETColumnType[] = [
       // : GridColDef[]
       {
         id: "name",
         label: "氏名",
-        minWidth: 60,
+        minWidth: 80,
         maxWidth: 80
       },
       {
@@ -174,10 +191,38 @@ function CABAddressList(props: { abook: ContentsPropsType }) {
       {
         id: "telephone",
         label: "電話番号",
-        minWidth: 50,
+        minWidth: 60,
         maxWidth: 100
       }
     ];
+    const columns_org: CETColumnType[] = [
+      // : GridColDef[]
+      {
+        id: "name",
+        label: "氏名",
+        minWidth: 80,
+        maxWidth: 80
+      },
+      {
+        id: "organizationName",
+        label: "勤務先",
+        minWidth: 80,
+        maxWidth: 80
+      },
+      {
+        id: "address",
+        label: "住所",
+        minWidth: 120
+      },
+      {
+        id: "telephone",
+        label: "電話番号",
+        minWidth: 60,
+        maxWidth: 100
+      }
+    ];
+
+    const columns = props.abook.orgPriority ? columns_org : columns_home;
 
     /*
     let rows: GridRowsProp = [
@@ -196,17 +241,22 @@ function CABAddressList(props: { abook: ContentsPropsType }) {
       let tel = "";
 
       let org = rec.organization ? rec.organization.name || "" : "";
+
       if (rec.addresses && rec.addresses.length) {
         let fa = rec.addresses[0];
+        const addrEmpty =
+          !fa.zipcode && !fa.region && !fa.city && !fa.street && !fa.building;
         //for( let index in rec.addresses ){
-        for (let index = 0; index < rec.addresses.length; index++) {
-          const adr = rec.addresses[index];
-          if (
-            (org.length && adr.kindof === "office") ||
-            (org.length === 0 && adr.kindof === "home")
-          ) {
-            fa = rec.addresses[index];
-            break;
+        if (addrEmpty || props.abook.orgPriority) {
+          for (let index = 0; index < rec.addresses.length; index++) {
+            const adr = rec.addresses[index];
+            if (
+              (org.length && adr.kindof === "office") ||
+              (org.length === 0 && adr.kindof === "home")
+            ) {
+              fa = rec.addresses[index];
+              break;
+            }
           }
         }
         if (!fa["zipcode"]) fa["zipcode"] = "";
@@ -242,6 +292,7 @@ function CABAddressList(props: { abook: ContentsPropsType }) {
       }
       rows.push({
         name: name,
+        organizationName: org,
         address: address,
         telephone: tel,
         id: rec["id"],
@@ -254,14 +305,20 @@ function CABAddressList(props: { abook: ContentsPropsType }) {
     cont = (
       <div style={{ height: "100%", width: "100%" }}>
         <CheckableEditableTable
-          tableTitle=""
+          tableTitle={props.abook.name}
+          dataType={props.abook.dataType}
           columns={columns}
-          rowHSize="medium"
+          rowHSize="small"
           rowPerPageOptions={[25, 50, 100]}
           keyField="id"
           labelField="name"
           rows={rows}
-          onEdit={(key: string) => {}}
+          onEdit={(key: string, label: string) => {
+            handleOnEdit(key, label);
+          }}
+          onDetail={(key: string, label: string) => {
+            handleOnShowDetail(key, label);
+          }}
           checkTarget={{
             icon: DeleteIcon,
             commandTip: "削除",
@@ -301,6 +358,52 @@ export type CABCtrlBarProps = {
   children: ReactNode;
 };
 
+const settingItems: PulldownMenuItem[] = [
+  {
+    text: "住所録の設定",
+    icon: TuneIcon,
+    handler: () => {
+      alert("住所録の設定 を選択");
+    }
+  },
+  {
+    text: "住所録の共有",
+    icon: ShareIcon,
+    handler: () => {
+      alert("住所録の共有 を選択");
+    }
+  },
+  {
+    text: "",
+    handler: () => {}
+  },
+  {
+    text: "インポート",
+    icon: UploadFileIcon,
+    handler: () => {
+      alert("インポート を選択");
+    }
+  },
+  {
+    text: "エクスポート",
+    icon: FileDownloadIcon,
+    handler: () => {
+      alert("エクスポート を選択");
+    }
+  },
+  {
+    text: "",
+    handler: () => {}
+  },
+  {
+    text: "住所録の削除",
+    icon: DeleteForeverIcon,
+    handler: () => {
+      alert("住所録の削除 を選択");
+    }
+  }
+];
+
 // typescript 導入したら class 宣言がややこしくなった
 class CABCtrlBar extends React.Component<CABCtrlBarProps, ContentsPropsType> {
   constructor(props: CABCtrlBarProps) {
@@ -308,6 +411,7 @@ class CABCtrlBar extends React.Component<CABCtrlBarProps, ContentsPropsType> {
     this.state = {
       //      filter: props.abook.filter || "",
       //      tags: props.abook.tags,
+      dataType: props.abook.dataType,
       id: props.abook.id,
       name: props.abook.name
     };
@@ -327,8 +431,13 @@ class CABCtrlBar extends React.Component<CABCtrlBarProps, ContentsPropsType> {
         tid = 0;
       }, 1000);
     } else {
-      this.setState({ id: data.id, name: data.name });
+      console.log(`setData(data):${JSON.stringify(data)}`);
+      this.setState({ dataType: data.dataType, id: data.id, name: data.name });
     }
+  }
+
+  addNewRecord() {
+    alert("新規追加　が選択された");
   }
 
   render() {
@@ -337,13 +446,88 @@ class CABCtrlBar extends React.Component<CABCtrlBarProps, ContentsPropsType> {
     if (this.context.isUserLoggedIn() === false) {
       controls = <span className="explain">ログインしてください</span>;
     } else {
+      const cxAddBtn = "8em"; //[()+新規作成]
+      const cxGearBtn = "3em"; //歯車アイコン
+      const cxMiddle = `calc( 100% - calc( ${cxAddBtn} + ${cxGearBtn} ))`;
       controls = (() => {
-        let abname = this.state.name || "choose address book";
-        return (
-          <>
-            <h2>筆まめクラウド住所録 ― {abname}</h2>
-          </>
-        );
+        return this.state.name ? (
+          <Box sx={{ width: "100%" }}>
+            <Grid container>
+              <Grid item width={cxAddBtn}>
+                <Button
+                  variant="contained"
+                  sx={{ fontSize: "95%" }}
+                  onClick={(e) => {
+                    this.addNewRecord();
+                  }}
+                >
+                  <PersonAddAlt1Icon />
+                  新規作成
+                </Button>
+              </Grid>
+              <Grid item width={cxMiddle}>
+                <Grid container columns={10}>
+                  <Grid item xs={4}>
+                    <Paper
+                      component="form"
+                      sx={{
+                        p: "2px 2px",
+                        mr: 1,
+                        display: "flex",
+                        alignItems: "center"
+                      }}
+                    >
+                      <InputBase
+                        sx={{ ml: 1, flex: 1 }}
+                        placeholder="タグでフィルタ"
+                        inputProps={{ "aria-label": "search" }}
+                      />
+                      <IconButton
+                        type="submit"
+                        sx={{ p: "5px" }}
+                        aria-label="search"
+                      >
+                        <ExpandCircleDownOutlinedIcon />
+                      </IconButton>
+                    </Paper>
+                  </Grid>
+                  <Divider />
+                  <Grid item xs={6}>
+                    <Paper
+                      component="form"
+                      sx={{
+                        p: "2px 2px",
+                        display: "flex",
+                        alignItems: "center"
+                      }}
+                    >
+                      <InputBase
+                        sx={{ ml: 1, flex: 1 }}
+                        placeholder="検索"
+                        inputProps={{ "aria-label": "search" }}
+                      />
+                      <IconButton
+                        type="submit"
+                        sx={{ p: "5px" }}
+                        aria-label="search"
+                      >
+                        <SearchIcon />
+                      </IconButton>
+                    </Paper>
+                  </Grid>
+                </Grid>
+              </Grid>
+              <Grid item width={cxGearBtn}>
+                <PulldownMenu
+                  tipText="住所録の設定"
+                  popupId={"setting-menu"}
+                  icon={SettingsOutlinedIcon}
+                  items={settingItems}
+                />
+              </Grid>
+            </Grid>
+          </Box>
+        ) : null;
       })();
     }
     // 制御エリアで設定した値をコンテンツに反映できるように、
@@ -357,13 +541,8 @@ class CABCtrlBar extends React.Component<CABCtrlBarProps, ContentsPropsType> {
           return child;
         case "object":
           return React.cloneElement(
-            child as React.ReactElement<ContentsPropsType>,
-            {
-              filter: this.state.filter,
-              tags: this.state.tags,
-              id: this.state.id,
-              name: this.state.name
-            }
+            child as React.ReactElement<{ abook: ContentsPropsType }>,
+            { abook: this.state }
           );
         default:
           return null;
@@ -375,34 +554,21 @@ class CABCtrlBar extends React.Component<CABCtrlBarProps, ContentsPropsType> {
         <div id="contents-inner">{childrenWithProps}</div>
       </>
     );
-    /*
-          {Children.map(this.props.children, (child) => {
-            if (React.isValidElement<ContentsPropsType>(child)) {
-              let item: ReactElement<ContentsPropsType> = child;
-              cloneElement<ContentsPropsType>(item, {
-                filter: this.state.filter,
-                tags: this.state.tags,
-                id: this.state.id,
-                name: this.state.name
-              });
-            }
-          })}
-    */
   }
 }
 
-function CABContents(props: ContentsPropsType) {
+function CABContents(props: { abook: ContentsPropsType }) {
   const user = useContext(UserContext);
 
   function getContents() {
     let cont = null;
     if (user.isUserLoggedIn()) {
-      cont = <CABAddressList abook={props} />;
+      cont = <CABAddressList abook={props.abook} />;
     } else {
       cont = (
         <div className="App-header">
           <p>
-            Hey! what are you doing?
+            Hey! What are you doing?
             <br />
             Just sign in!
             <br />
