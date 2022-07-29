@@ -189,7 +189,7 @@ export const UserContextProvider: React.FC<{ children: React.ReactNode }> = ({
     localStorage.getItem("user") || '{"userId":0,"userName":"","email":""}'
   );
   let values: UserData = {
-    isLoggedIn: curr.userId !== 0,
+    isLoggedIn: curr.userId !== undefined && curr.userId !== 0,
     isLoggInable: true,
     userId: curr.userId || 0,
     userName: curr.userName || "",
@@ -207,7 +207,7 @@ export const UserContextProvider: React.FC<{ children: React.ReactNode }> = ({
   };
   console.log(`user-data: ${JSON.stringify(values)}`);
 
-  const [user, setValues] = useState<UserData | null>(values);
+  const [user, setValues] = useState<UserData>(values);
 
   const isUserLoggedIn = () => {
     if (!user || !user.isLoggInable) return false;
@@ -261,11 +261,11 @@ export const UserContextProvider: React.FC<{ children: React.ReactNode }> = ({
   };
 
   const setABInfo = (info: ABInfoType) => {
-    let values = { ...user };
-    if (info.access_token) values["a_token"] = info.access_token;
-    if (info.id_token) values["id_token"] = info.id_token;
-    if (info.refresh_token) values["r_token"] = info.refresh_token;
-    setValues({ ...user, ...values });
+    let newvalues: UserData = { ...user };
+    if (info.access_token) newvalues.a_token = info.access_token;
+    if (info.id_token) newvalues.id_token = info.id_token;
+    if (info.refresh_token) newvalues.r_token = info.refresh_token;
+    setValues(newvalues);
     localStorage.setItem("user", JSON.stringify(values));
   };
 
@@ -294,39 +294,54 @@ export const UserContextProvider: React.FC<{ children: React.ReactNode }> = ({
           csr: csr
         },
         (resp) => {
-          console.log(`resp:${JSON.stringify(resp)}`);
+          //console.log(`resp:${JSON.stringify(resp)}`);
           if ("data" in resp) {
             const data = resp["data"];
 
             // ナンヤカンヤ
-            // 本来はサーバーと認証のやりとりがあって、その結果としてユーザー情報がセットされる
-            let userdata = {
-              ...user,
-              userName: "巨林 ダビッドソン",
-              userId: 1,
-              email: email,
-              isLoggedIn: true,
-              a_token: data.access_token,
-              id_token: data.id_token,
-              r_token: data.refresh_token,
-              uag: uag,
-              ept: ept,
-              eps: eps,
-              epm: epm,
-              cid: cid,
-              cse: cse,
-              csr: csr
+
+            let params = {
+              atk: data.access_token,
+              ept: eps,
+              uag: uag
             };
-            setValues(userdata);
-            localStorage.setItem("user", JSON.stringify(userdata));
-            cbf({ login: true, errtxt: "" });
-            /*
-            user.setABInfo( {
-                            access_token:data.access_token,
-                            id_token:data.id_token,
-                            refresh_token:data.refresh_token,
-                            code:scd });
-             */
+            ajaxGet(`ept/homeaddresses/list`, params, (json) => {
+              let userName = email;
+              if (json && "data" in json) {
+                userName = json["data"][0]["lastname"];
+                if (userName) userName += " ";
+                userName += json["data"][0]["firstname"];
+                if (!userName) {
+                  try {
+                    userName = json["data"][0]["emails"][0]["address"];
+                  } catch (e) {
+                    userName = email;
+                  }
+                }
+              }
+
+              // 本来はサーバーと認証のやりとりがあって、その結果としてユーザー情報がセットされる
+              let userdata = {
+                ...user,
+                userName: userName,
+                userId: 1,
+                email: email,
+                isLoggedIn: true,
+                a_token: data.access_token,
+                id_token: data.id_token,
+                r_token: data.refresh_token,
+                uag: uag,
+                ept: ept,
+                eps: eps,
+                epm: epm,
+                cid: cid,
+                cse: cse,
+                csr: csr
+              };
+              setValues(userdata);
+              localStorage.setItem("user", JSON.stringify(userdata));
+              cbf({ login: true, errtxt: "" });
+            });
           } else {
             let userdata = {
               ...user,
@@ -385,7 +400,7 @@ export const UserContextProvider: React.FC<{ children: React.ReactNode }> = ({
         if ("data" in resp) {
           const data = resp["data"];
 
-          let userdata = {
+          let userdata: UserData = {
             ...user,
             a_token: data.access_token,
             id_token: data.id_token,

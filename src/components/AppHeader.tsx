@@ -88,10 +88,11 @@ function HeaderRight(props: HeaderPropType) {
     rightblock = <AccountButton />;
   }
 
-  const cxRest = `calc( 100% - ${getLeftWidth(props)}px )`;
+  //const cxRest = `calc( 100% - ${getLeftWidth(props)}px )`;
+  // calc()を使わなくても、 flexGrow: 1 でいい感じ
 
   return (
-    <Grid item width={cxRest} sx={{ minWidth: "26em" }}>
+    <Grid item sx={{ flexGrow: 1, minWidth: "26em" }}>
       <Grid container alignItems="end">
         <Grid item sx={{ flexGrow: 1 }} />
         {props.links &&

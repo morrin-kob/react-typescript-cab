@@ -40,6 +40,41 @@ type ContentsPropsType = {
   name: string;
 };
 
+function reformResponse(resp: {}) {
+  //resp.setEncoding("utf8");
+  const data = {};
+  for (let key of Object.keys(resp)) {
+    let type = typeof resp[key];
+    if (
+      type === "number" ||
+      type === "string" ||
+      type === "boolean" ||
+      (type === "object" && key === "data")
+    ) {
+      data[key] = resp[key];
+    } else {
+      //console.log("*" + key + "*:type:" + type);
+    }
+  }
+
+  let scInMessage = "400";
+  if (data["message"]) {
+    if (data["message"].match(/status code (\d+)/)) {
+      scInMessage = RegExp.$1;
+    }
+  }
+  let statusCode = data["status"] || data["statusCode"] || scInMessage;
+  if (parseInt(statusCode, 10) >= 400) {
+    data["error"] =
+      data["statusMessage"] ||
+      data["statusText"] ||
+      data["message"] ||
+      "Error: something is wrong";
+  }
+  data["statusCode"] = statusCode;
+  return data;
+}
+
 //
 // 非同期処理
 //
@@ -78,10 +113,15 @@ const ajaxGet = (
       callbackfunc(json);
     })
     .catch((e) => {
-      if (typeof e === "string") {
-        callbackfunc({ error: e });
+      if (!e) {
+        callbackfunc({
+          status: "error",
+          error: "fail to fetch. don't know why"
+        });
+      } else if (typeof e === "string") {
+        callbackfunc({ status: "error", error: e });
       } else {
-        callbackfunc(e);
+        callbackfunc(reformResponse(e));
       }
     });
 };
@@ -127,7 +167,7 @@ const ajaxPost = (
       if (typeof e === "string") {
         callbackfunc({ error: e });
       } else {
-        callbackfunc(e);
+        callbackfunc(reformResponse(e));
       }
     });
 };

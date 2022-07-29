@@ -124,6 +124,8 @@ type ABRecDialogStateType = {
   open: boolean;
   recid: string;
   name: string;
+  status: "loading" | "success" | "error";
+  statusText: string;
   data: RecordType;
 };
 
@@ -349,6 +351,8 @@ export default class ABRecDialog extends React.Component<
       open: false,
       recid: "",
       name: "",
+      status: "loading",
+      statusText: "",
       data: { id: "" }
     };
   }
@@ -371,30 +375,56 @@ export default class ABRecDialog extends React.Component<
         ept: this.props.user.getEpm(),
         uag: this.props.user.getUag()
       };
+
+      this.setState({
+        ...this.state,
+        data: { id: this.state.recid },
+        status: "loading",
+        statusText: ""
+      });
       ajaxGet(url, params, (json) => {
-        let rec = null;
         if ("data" in json) {
-          rec = { ...this.state.data, ...json["data"] };
-          this.setState({ data: rec });
+          this.setState({
+            ...this.state,
+            data: json["data"],
+            status: "success",
+            statusText: "ok"
+          });
         } else {
-          if (parseInt(json["statusCode"], 10) === 401) {
+          if (
+            "statusCode" in json &&
+            parseInt(json["statusCode"], 10) === 401 // atoken got timeouted
+          ) {
             this.props.user.RefreshAndRetry(url, "GET", params, (json: {}) => {
               if ("data" in json) {
-                rec = { ...this.state.data, ...json["data"] };
+                this.setState({
+                  ...this.state,
+                  data: json["data"],
+                  status: "success",
+                  statusText: "ok"
+                });
               } else {
                 let error: string =
-                  json["error"] ||
-                  json["statusMessage"] ||
-                  "ロードに失敗しました";
-                rec = { ...this.state.data, error: error };
+                   json["error"] ||
+                   json["statusMessage"] ||
+                   "ロードに失敗しました";
+                this.setState({
+                  ...this.state,
+                  status: "error",
+                  statusText: error
+                });
               }
-              this.setState({ data: rec });
             });
           } else {
             let error: string =
-              json["error"] || json["statusMessage"] || "ロードに失敗しました";
-            rec = { ...this.state.data, ...{ error: error } };
-            this.setState({ data: rec });
+              json["error"] ||
+              json["statusMessage"] ||
+              `${JSON.stringify(json)}:ロードに失敗しました`;
+            this.setState({
+              ...this.state,
+              status: "error",
+              statusText: error
+            });
           }
         }
       });
@@ -402,67 +432,76 @@ export default class ABRecDialog extends React.Component<
 
     let name = this.state.name;
     let cont = (
-      <Box sx={{ width: "100%", mt: 10, textAlign: "center" }}>
-        <div sx={{ height: "5em" }}></div>
+      <Box sx={{ width: "calc( 80vw )", mt: 10, textAlign: "center" }}>
+        <div className="textcenter">loading...</div>
         <CircularProgress />
       </Box>
     );
     if (this.state.data.id && this.state.data.id === this.state.recid) {
-      const rec: RecordType = this.state.data;
-      name = ReformName(rec);
+      if (this.state.status === "success") {
+        const rec: RecordType = this.state.data;
+        name = ReformName(rec);
 
-      const rows = OutRecord(rec);
+        const rows = OutRecord(rec);
 
-      //createData("name", name), createData("dessert", "Cupcake")];
-      cont = (
-        <div>
-          <Box display="grid" gridTemplateColumns="repeat(12, 1fr)" gap={2}>
-            <Box gridColumn="span 2">
-              <img
-                src={DefPersonImg}
-                style={{ width: 64, height: 64 }}
-                alt=""
-              />
+        //createData("name", name), createData("dessert", "Cupcake")];
+        cont = (
+          <div>
+            <Box display="grid" gridTemplateColumns="repeat(12, 1fr)" gap={2}>
+              <Box gridColumn="span 2">
+                <img
+                  src={DefPersonImg}
+                  style={{ width: 64, height: 64 }}
+                  alt=""
+                />
+              </Box>
+              <Box gridColumn="span 10">
+                <Table aria-label="simple table">
+                  <TableBody>
+                    {rows.map((row) => (
+                      <TableRow key={row.title} sx={{ height: "1.2em" }}>
+                        <TableCell
+                          align="left"
+                          sx={{ py: 1, width: "10em", height: "1.2em" }}
+                        >
+                          {row.title}
+                        </TableCell>
+                        <TableCell
+                          size="medium"
+                          align="left"
+                          sx={{ py: 1, height: "1.2em" }}
+                        >
+                          {row.data.split(/\n|<br>|<br \/>/i).map((str) => {
+                            return <div>{str}</div>;
+                          })}
+                        </TableCell>
+                        <TableCell
+                          size="medium"
+                          align="left"
+                          sx={{ py: 1, width: "2em" }}
+                        >
+                          {row.icon && row.link && (
+                            <a href={row.link} target="cabhref">
+                              <row.icon />
+                            </a>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </Box>
             </Box>
-            <Box gridColumn="span 10">
-              <Table aria-label="simple table">
-                <TableBody>
-                  {rows.map((row) => (
-                    <TableRow key={row.title} sx={{ height: "1.2em" }}>
-                      <TableCell
-                        align="left"
-                        sx={{ py: 1, width: "10em", height: "1.2em" }}
-                      >
-                        {row.title}
-                      </TableCell>
-                      <TableCell
-                        size="medium"
-                        align="left"
-                        sx={{ py: 1, height: "1.2em" }}
-                      >
-                        {row.data.split(/\n|<br>|<br \/>/i).map((str) => {
-                          return <div>{str}</div>;
-                        })}
-                      </TableCell>
-                      <TableCell
-                        size="medium"
-                        align="left"
-                        sx={{ py: 1, width: "2em" }}
-                      >
-                        {row.icon && row.link && (
-                          <a href={row.link} target="cabhref">
-                            <row.icon />
-                          </a>
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </Box>
-          </Box>
-        </div>
-      );
+          </div>
+        );
+      } else if (this.state.status === "error") {
+        cont = (
+          <div style={{ width: "calc( 80vw )" }}>
+            <h3>failed</h3>
+            <p>{this.state.statusText}</p>
+          </div>
+        );
+      }
     }
     type DlgButtonProps = {
       caption: string;
@@ -495,10 +534,12 @@ export default class ABRecDialog extends React.Component<
     };
 
     const buttons: DlgButtonProps[] = [];
-    buttons.push(makeButton("削除", "warning", this.handleClose));
-    buttons.push(makeButton("他のユーザに送信", "primary", this.handleClose));
-    buttons.push(makeButton("コピー", "primary", this.handleClose));
-    buttons.push(makeButton("編集", "success", this.handleClose));
+    if (this.state.status === "success") {
+      buttons.push(makeButton("削除", "warning", this.handleClose));
+      buttons.push(makeButton("他のユーザに送信", "primary", this.handleClose));
+      buttons.push(makeButton("コピー", "primary", this.handleClose));
+      buttons.push(makeButton("編集", "success", this.handleClose));
+    }
     buttons.push(makeButton("閉じる", "primary", this.handleClose));
 
     let cxDlg = isMobile ? "100%" : "70%";

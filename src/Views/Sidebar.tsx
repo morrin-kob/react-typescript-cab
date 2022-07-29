@@ -59,14 +59,23 @@ function CABBookList(props: {
     };
     ajaxGet(endpoint, params, (json) => {
       //console.log( JSON.stringify(json) );
-      if (parseInt(json["statusCode"], 10) === 401) {
+      if ("statusCode" in json && parseInt(json["statusCode"], 10) === 401) {
         user.RefreshAndRetry(endpoint, "GET", params, (json: {}) => {
-          if ("data" in json) setABooks(json["data"]);
-          else setError(json["error"] || json["message"]);
+          if ("data" in json) {
+            setError("");
+            setABooks(json["data"]);
+          } else setError(json["error"] || json["message"] || "load error");
         });
       } else {
-        if ("data" in json) setABooks(json["data"]);
-        else setError(json["error"] || json["message"]);
+        if ("data" in json) {
+          setError("");
+          setABooks(json["data"]);
+        } else
+          setError(
+            json["error"] ||
+              json["message"] ||
+              `load error:${JSON.stringify(json)}`
+          );
       }
     });
   };

@@ -309,7 +309,7 @@ export default function CheckableEditableTable(
         sellist={selected}
         checkTarget={props.checkTarget}
       />
-      <TableContainer sx={{ maxHeight: "calc( 100vh - 14.00em )" }}>
+      <TableContainer sx={{ maxHeight: "calc( 100vh - 16.00em )" }}>
         <Table
           stickyHeader
           sx={{ minWidth: 250 }}

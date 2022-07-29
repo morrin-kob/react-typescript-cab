@@ -54,15 +54,9 @@ function loadAddress(
   } else {
     url += `/addresses/${abook.id}/list`;
   }
-  console.log(
-    "ajaxGet( " +
-      url +
-      ", {access_token: " +
-      user.getAToken() +
-      ", groupid: " +
-      abook["id"] +
-      "} )"
-  );
+  // console.log(
+  //   `ajaxGet( ${url}, { access_token: ${user.getAToken()}, groupid: ${abook["id"]} } )`
+  // );
   let params = {
     atk: user.getAToken(),
     ept: user.getEpm(),
