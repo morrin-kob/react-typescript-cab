@@ -2,7 +2,15 @@ import * as React from "react";
 import { useContext, useEffect, useMemo } from "react";
 import "../App.css";
 import { UserContext } from "../Account";
-import { AppVal, ajaxGet, ajaxPost, ContentsPropsType } from "../AppSettings";
+import {
+  AppVal,
+  ajaxGet,
+  ajaxPost,
+  ContentsPropsType,
+  getHomeAddressID,
+  isHomeAddress
+} from "../AppSettings";
+import { useNavigate } from "react-router-dom";
 
 import Box from "@mui/material/Box";
 import Drawer from "@mui/material/Drawer";
@@ -33,6 +41,11 @@ function WarningBlock(props: { message: string }) {
   return <>{alert}</>;
 }
 
+export type SBParamsType = {
+  abId: string;
+  recId: string;
+};
+
 //
 // サイドバーに並べる住所録リスト
 //
@@ -41,9 +54,9 @@ function CABBookList(props: {
 }) {
   const [abooks, setABooks] = React.useState<ContentsPropsType[]>([]);
   const [abook, setABook] = React.useState<ContentsPropsType>({
-    dataType: "abook",
     id: "",
-    name: ""
+    name: "",
+    use: "private"
   });
   const [error, setError] = React.useState<string>("");
 
@@ -104,7 +117,6 @@ function CABBookList(props: {
                   <MenuItem
                     onClick={() => {
                       let ab: ContentsPropsType = info;
-                      ab.dataType = "abook";
                       props.handleSetABook(ab);
                     }}
                     key={index}
@@ -144,6 +156,7 @@ function CABBookList(props: {
 
 function CABSidebar(props: {
   dir: "left" | "top" | "right" | "bottom";
+  params: SBParamsType;
   handlerHamberger: (info: ContentsPropsType) => void;
 }) {
   const [state, setState] = React.useState({
@@ -156,21 +169,27 @@ function CABSidebar(props: {
   const [all, setAll] = React.useState(true);
 
   const [abook, setABook] = React.useState<ContentsPropsType>({
-    dataType: "abook",
-    id: "",
-    name: ""
+    id: props.params.abId,
+    name: "",
+    use: "private"
   });
 
   const user = useContext(UserContext);
 
+  const nav = useNavigate();
+
   // サイドバー内のメニューから何か選択された時
   const handleSel = (key: ContentsPropsType) => {
+    //console.log(`selected:${JSON.stringify(key)}`);
     setABook(key);
   };
 
   // Tag指定に変化があった時に発火
   useEffect(() => {
-    props.handlerHamberger(abook);
+    if (abook.id) {
+      nav(`/ab/${abook.id}`);
+      props.handlerHamberger({ ...abook });
+    }
   }, [all, abook]);
 
   const toggleDrawer = (anchor, open) => (event) => {
@@ -202,6 +221,33 @@ function CABSidebar(props: {
   );
 
   if (!user.isUserLoggedIn()) {
+    return <></>;
+  } else if (props.params.abId && !abook.name) {
+    let endpoint = `${user.getEpt()}/group/${props.params.abId}`;
+
+    let params = {
+      atk: user.getAToken(),
+      ept: user.getEpm(),
+      uag: user.getUag()
+    };
+    ajaxGet(endpoint, params, (json) => {
+      console.log(`get <group:>${JSON.stringify(json)}`);
+      if ("statusCode" in json && parseInt(json["statusCode"], 10) === 401) {
+        user.RefreshAndRetry(endpoint, "GET", params, (json: {}) => {
+          if ("data" in json) {
+            setABook({ ...json["data"] });
+          } else {
+            props.params.abId = "";
+            setABook({ ...abook, id: "" });
+          }
+        });
+      } else if ("data" in json) {
+        setABook({ ...json["data"] });
+      } else {
+        props.params.abId = "";
+        setABook({ ...abook, id: "" });
+      }
+    });
     return <></>;
   }
   return (
@@ -253,9 +299,9 @@ function CABSidebar(props: {
             <MenuItem
               onClick={() => {
                 props.handlerHamberger({
-                  dataType: "profile",
-                  id: "homeaddresses",
-                  name: "マイプロフィール"
+                  id: getHomeAddressID(),
+                  name: "マイプロフィール",
+                  use: "private"
                 });
               }}
               color="error"

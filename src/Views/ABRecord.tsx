@@ -14,7 +14,13 @@ import Table from "@mui/material/Table";
 import TableBody from "@mui/material/TableBody";
 import TableCell from "@mui/material/TableCell";
 import TableRow from "@mui/material/TableRow";
-import { AppVal, ajaxGet, ajaxPost, ContentsPropsType } from "../AppSettings";
+import {
+  AppVal,
+  ajaxGet,
+  ajaxPost,
+  ContentsPropsType,
+  isHomeAddress
+} from "../AppSettings";
 import CircularProgress from "@mui/material/CircularProgress";
 import { SvgIcon } from "@mui/material";
 import DefPersonImg from "../assets/images/person.png";
@@ -337,6 +343,37 @@ const OutRecord = (rec: RecordType) => {
   return rows;
 };
 
+const loadRecord = (
+  user: UserContextType,
+  abId: string,
+  recId: string,
+  onLoad: (json: {}) => void
+) => {
+  let url = `${user.getEpt()}/`;
+  if (isHomeAddress(abId)) {
+    url += `homeaddress/${recId}`;
+  } else {
+    url += `address/${recId}`;
+  }
+  let params = {
+    atk: user.getAToken(),
+    ept: user.getEpm(),
+    uag: user.getUag()
+  };
+
+  ajaxGet(url, params, (json) => {
+    if ("data" in json) {
+      onLoad(json);
+    } else {
+      if ("statusCode" in json && parseInt(json["statusCode"], 10) === 401) {
+        user.RefreshAndRetry(url, "GET", params, onLoad);
+      } else {
+        onLoad(json);
+      }
+    }
+  });
+};
+
 //
 // １レコードの詳細を表示するダイアログ
 //　編集はまた別の　ページorダイアログ
@@ -362,147 +399,116 @@ export default class ABRecDialog extends React.Component<
   };
 
   render() {
-    if (this.state.data.id !== this.state.recid) {
-      // load
-      let url = `${this.props.user.getEpt()}/`;
-      if (this.props.abook.dataType === "abook") {
-        url += `address/${this.state.recid}`;
-      } else if (this.props.abook.dataType === "profile") {
-        url += `homeaddress/${this.state.recid}`;
-      }
-      let params = {
-        atk: this.props.user.getAToken(),
-        ept: this.props.user.getEpm(),
-        uag: this.props.user.getUag()
-      };
-
-      this.setState({
-        ...this.state,
-        data: { id: this.state.recid },
-        status: "loading",
-        statusText: ""
-      });
-      ajaxGet(url, params, (json) => {
-        if ("data" in json) {
-          this.setState({
-            ...this.state,
-            data: json["data"],
-            status: "success",
-            statusText: "ok"
-          });
-        } else {
-          if (
-            "statusCode" in json &&
-            parseInt(json["statusCode"], 10) === 401 // atoken got timeouted
-          ) {
-            this.props.user.RefreshAndRetry(url, "GET", params, (json: {}) => {
-              if ("data" in json) {
-                this.setState({
-                  ...this.state,
-                  data: json["data"],
-                  status: "success",
-                  statusText: "ok"
-                });
-              } else {
-                let error: string =
-                   json["error"] ||
-                   json["statusMessage"] ||
-                   "ロードに失敗しました";
-                this.setState({
-                  ...this.state,
-                  status: "error",
-                  statusText: error
-                });
-              }
-            });
-          } else {
-            let error: string =
-              json["error"] ||
-              json["statusMessage"] ||
-              `${JSON.stringify(json)}:ロードに失敗しました`;
-            this.setState({
-              ...this.state,
-              status: "error",
-              statusText: error
-            });
+    if (this.state.status === "loading") {
+      if (this.state.data.id === this.state.recid) {
+        this.setState({
+          ...this.state,
+          status: "success",
+          statusText: "ok"
+        });
+      } else {
+        loadRecord(
+          this.props.user,
+          this.props.abook.id,
+          this.state.recid,
+          (json) => {
+            if ("data" in json) {
+              this.setState({
+                ...this.state,
+                data: json["data"],
+                status: "success",
+                statusText: "ok"
+              });
+            } else {
+              let error: string =
+                json["error"] ||
+                json["statusMessage"] ||
+                "ロードに失敗しました";
+              this.setState({
+                ...this.state,
+                status: "error",
+                statusText: error
+              });
+            }
           }
-        }
-      });
+        );
+      }
     }
 
     let name = this.state.name;
-    let cont = (
-      <Box sx={{ width: "calc( 80vw )", mt: 10, textAlign: "center" }}>
-        <div className="textcenter">loading...</div>
-        <CircularProgress />
-      </Box>
-    );
-    if (this.state.data.id && this.state.data.id === this.state.recid) {
-      if (this.state.status === "success") {
-        const rec: RecordType = this.state.data;
-        name = ReformName(rec);
+    let cont = <></>;
+    if (this.state.status === "loading") {
+      cont = (
+        <Box sx={{ width: "calc( 80vw )", mt: 10, textAlign: "center" }}>
+          <div className="textcenter">loading...</div>
+          <CircularProgress />
+        </Box>
+      );
+    } else if (this.state.status === "success") {
+      const rec: RecordType = this.state.data;
+      name = ReformName(rec);
 
-        const rows = OutRecord(rec);
+      const rows = OutRecord(rec);
 
-        //createData("name", name), createData("dessert", "Cupcake")];
-        cont = (
-          <div>
-            <Box display="grid" gridTemplateColumns="repeat(12, 1fr)" gap={2}>
-              <Box gridColumn="span 2">
-                <img
-                  src={DefPersonImg}
-                  style={{ width: 64, height: 64 }}
-                  alt=""
-                />
-              </Box>
-              <Box gridColumn="span 10">
-                <Table aria-label="simple table">
-                  <TableBody>
-                    {rows.map((row) => (
-                      <TableRow key={row.title} sx={{ height: "1.2em" }}>
-                        <TableCell
-                          align="left"
-                          sx={{ py: 1, width: "10em", height: "1.2em" }}
-                        >
-                          {row.title}
-                        </TableCell>
-                        <TableCell
-                          size="medium"
-                          align="left"
-                          sx={{ py: 1, height: "1.2em" }}
-                        >
-                          {row.data.split(/\n|<br>|<br \/>/i).map((str) => {
-                            return <div>{str}</div>;
-                          })}
-                        </TableCell>
-                        <TableCell
-                          size="medium"
-                          align="left"
-                          sx={{ py: 1, width: "2em" }}
-                        >
-                          {row.icon && row.link && (
-                            <a href={row.link} target="cabhref">
-                              <row.icon />
-                            </a>
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </Box>
+      //createData("name", name), createData("dessert", "Cupcake")];
+      cont = (
+        <div>
+          <Box display="grid" gridTemplateColumns="repeat(12, 1fr)" gap={2}>
+            <Box gridColumn="span 2">
+              <img
+                src={DefPersonImg}
+                style={{ width: 64, height: 64 }}
+                alt=""
+              />
             </Box>
-          </div>
-        );
-      } else if (this.state.status === "error") {
-        cont = (
-          <div style={{ width: "calc( 80vw )" }}>
-            <h3>failed</h3>
-            <p>{this.state.statusText}</p>
-          </div>
-        );
-      }
+            <Box gridColumn="span 10">
+              <Table aria-label="simple table">
+                <TableBody>
+                  {rows.map((row) => (
+                    <TableRow key={row.title} sx={{ height: "1.2em" }}>
+                      <TableCell
+                        align="left"
+                        sx={{ py: 1, width: "10em", height: "1.2em" }}
+                      >
+                        {row.title}
+                      </TableCell>
+                      <TableCell
+                        size="medium"
+                        align="left"
+                        sx={{ py: 1, height: "1.2em" }}
+                      >
+                        {row.data.split(/\n|<br>|<br \/>/i).map((str) => {
+                          return <div>{str}</div>;
+                        })}
+                      </TableCell>
+                      <TableCell
+                        size="medium"
+                        align="left"
+                        sx={{ py: 1, width: "2em" }}
+                      >
+                        {row.icon && row.link && (
+                          <a href={row.link} target="cabhref">
+                            <row.icon />
+                          </a>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </Box>
+          </Box>
+        </div>
+      );
+    } else if (this.state.status === "error") {
+      cont = (
+        <div style={{ width: "calc( 80vw )" }}>
+          <h3>failed</h3>
+          <p>{this.state.statusText}</p>
+        </div>
+      );
     }
+
     type DlgButtonProps = {
       caption: string;
       color:
@@ -579,4 +585,250 @@ export default class ABRecDialog extends React.Component<
   }
 }
 
-export { ABRecDialogPropsType, ABRecDialogStateType };
+export const ABRecDialog2: React.FC = (props: ABRecDialogPropsType) => {
+  const [state, setState] = React.useState<ABRecDialogStateType>({
+    open: false,
+    recid: props.abook.id,
+    name: "",
+    status: "loading",
+    statusText: "",
+    data: { id: "" }
+  });
+
+  const handleClose = () => {
+    setState({ ...state, open: false });
+  };
+
+  if (state.data.id !== state.recid) {
+    // load
+    let url = `${props.user.getEpt()}/`;
+    if (isHomeAddress(props.abook.id)) {
+      url += `homeaddress/${state.recid}`;
+    } else {
+      url += `address/${state.recid}`;
+    }
+    let params = {
+      atk: props.user.getAToken(),
+      ept: props.user.getEpm(),
+      uag: props.user.getUag()
+    };
+
+    setState({
+      ...state,
+      data: { id: state.recid },
+      status: "loading",
+      statusText: ""
+    });
+
+    ajaxGet(url, params, (json) => {
+      if ("data" in json) {
+        setState({
+          ...state,
+          data: json["data"],
+          status: "success",
+          statusText: "ok"
+        });
+      } else {
+        if (
+          "statusCode" in json &&
+          parseInt(json["statusCode"], 10) === 401 // atoken got timeouted
+        ) {
+          props.user.RefreshAndRetry(url, "GET", params, (json: {}) => {
+            if ("data" in json) {
+              setState({
+                ...state,
+                data: json["data"],
+                status: "success",
+                statusText: "ok"
+              });
+            } else {
+              let error: string =
+                json["error"] ||
+                json["statusMessage"] ||
+                "ロードに失敗しました";
+              setState({
+                ...state,
+                status: "error",
+                statusText: error
+              });
+            }
+          });
+        } else {
+          let error: string =
+            json["error"] ||
+            json["statusMessage"] ||
+            `${JSON.stringify(json)}:ロードに失敗しました`;
+          setState({
+            ...state,
+            status: "error",
+            statusText: error
+          });
+        }
+      }
+    });
+  }
+
+  let name = state.name;
+
+  let cont = (
+    <Box sx={{ width: "calc( 80vw )", mt: 10, textAlign: "center" }}>
+      <div className="textcenter">loading...</div>
+      <CircularProgress />
+    </Box>
+  );
+
+  if (state.data.id && state.data.id === state.recid) {
+    if (state.status === "success") {
+      const rec: RecordType = state.data;
+      name = ReformName(rec);
+
+      const rows = OutRecord(rec);
+
+      //createData("name", name), createData("dessert", "Cupcake")];
+      cont = (
+        <div>
+          <Box display="grid" gridTemplateColumns="repeat(12, 1fr)" gap={2}>
+            <Box gridColumn="span 2">
+              <img
+                src={DefPersonImg}
+                style={{ width: 64, height: 64 }}
+                alt=""
+              />
+            </Box>
+            <Box gridColumn="span 10">
+              <Table aria-label="simple table">
+                <TableBody>
+                  {rows.map((row) => (
+                    <TableRow key={row.title} sx={{ height: "1.2em" }}>
+                      <TableCell
+                        align="left"
+                        sx={{ py: 1, width: "10em", height: "1.2em" }}
+                      >
+                        {row.title}
+                      </TableCell>
+                      <TableCell
+                        size="medium"
+                        align="left"
+                        sx={{ py: 1, height: "1.2em" }}
+                      >
+                        {row.data.split(/\n|<br>|<br \/>/i).map((str) => {
+                          return <div>{str}</div>;
+                        })}
+                      </TableCell>
+                      <TableCell
+                        size="medium"
+                        align="left"
+                        sx={{ py: 1, width: "2em" }}
+                      >
+                        {row.icon && row.link && (
+                          <a href={row.link} target="cabhref">
+                            <row.icon />
+                          </a>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </Box>
+          </Box>
+        </div>
+      );
+    } else if (state.status === "error") {
+      cont = (
+        <div style={{ width: "calc( 80vw )" }}>
+          <h3>failed</h3>
+          <p>{state.statusText}</p>
+        </div>
+      );
+    }
+  }
+  type DlgButtonProps = {
+    caption: string;
+    color:
+      | "inherit"
+      | "primary"
+      | "secondary"
+      | "success"
+      | "error"
+      | "info"
+      | "warning";
+    onclick: () => void;
+  };
+
+  type MakeButtonType = (
+    caption: string,
+    color:
+      | "inherit"
+      | "primary"
+      | "secondary"
+      | "success"
+      | "error"
+      | "info"
+      | "warning",
+    onclick: () => void
+  ) => DlgButtonProps;
+
+  const makeButton: MakeButtonType = (caption, color, onclick) => {
+    return { caption: caption, color: color, onclick: onclick };
+  };
+
+  const buttons: DlgButtonProps[] = [];
+  if (state.status === "success") {
+    buttons.push(makeButton("削除", "warning", handleClose));
+    buttons.push(makeButton("他のユーザに送信", "primary", handleClose));
+    buttons.push(makeButton("コピー", "primary", handleClose));
+    buttons.push(makeButton("編集", "success", handleClose));
+  }
+  buttons.push(makeButton("閉じる", "primary", handleClose));
+
+  let cxDlg = isMobile ? "100%" : "70%";
+
+  return (
+    <Dialog open={state.open} onClose={handleClose}>
+      <DialogTitle sx={{ width: { cxDlg }, maxWidth: 600 }}>
+        {name}
+        <IconButton
+          aria-label="close"
+          onClick={handleClose}
+          sx={{
+            color: "white",
+            position: "absolute",
+            right: 8,
+            top: 8
+          }}
+        >
+          <CloseIcon />
+        </IconButton>
+      </DialogTitle>
+      <DialogContent>{cont}</DialogContent>
+      <DialogActions>
+        {buttons.map((button) => {
+          return (
+            <Button
+              color={button.color}
+              variant="contained"
+              onClick={button.onclick}
+            >
+              {button.caption}
+            </Button>
+          );
+        })}
+      </DialogActions>
+    </Dialog>
+  );
+};
+
+const ABEditRecord: React.FC = (props: {
+  rec: RecordType;
+  onEndEdit: () => void;
+}) => {
+  return (
+    <>
+      <p>{JSON.stringify(props.rec)}</p>
+      <Button onClick={props.onEndEdit}>戻る</Button>
+    </>
+  );
+};
+
+export { ABRecDialogPropsType, ABRecDialogStateType, ABEditRecord };

@@ -205,7 +205,8 @@ export const UserContextProvider: React.FC<{ children: React.ReactNode }> = ({
     cse: curr.cse || "",
     csr: curr.csr || ""
   };
-  console.log(`user-data: ${JSON.stringify(values)}`);
+
+  //console.log(`user-data: ${JSON.stringify(values)}`);
 
   const [user, setValues] = useState<UserData>(values);
 

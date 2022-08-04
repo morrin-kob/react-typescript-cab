@@ -226,7 +226,6 @@ const CheckableEditableTableToolbar = (
 //////////////////////////////////////////////////////
 export type CheckableEditableTableProps = {
   tableTitle: string;
-  dataType: string;
   columns: CETColumnType[];
   rows: {}[];
   rowHSize: "small" | "medium";
@@ -343,7 +342,6 @@ export default function CheckableEditableTable(
                   ? props.onEdit
                   : (k: string, l: string) => {};
 
-                let fieldData = "";
                 return (
                   <TableRow
                     hover
@@ -413,6 +411,7 @@ export default function CheckableEditableTable(
         page={page}
         onPageChange={handleChangePage}
         onRowsPerPageChange={handleChangeRowsPerPage}
+        labelRowsPerPage={"件数/page"}
       />
       {/* </Paper> */}
     </Box>

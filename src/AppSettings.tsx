@@ -1,8 +1,10 @@
 // グローバル変数および定数
-// こんな風な管理はReact上は多分間違ってるのでは？
+// こんな風な管理はReact上OKなのか？
 //
+import { SvgIcon } from "@mui/material";
+
 const AppVal = {
-  AppTitle: "筆まめクラウド住所録",
+  AppTitle: "なんちゃってFCAB",
   SubTitle: "anytime, anywhere",
   AppVersion: 0.01,
 
@@ -31,13 +33,23 @@ const reformText = (text: string) => {
     .replace(/\n/g, "<br>");
 };
 
+const ID_homeAddress = "_home";
+const getHomeAddressID = () => {
+  return ID_homeAddress;
+};
+const isHomeAddress = (bookId: string) => {
+  return bookId === ID_homeAddress;
+};
+
 type ContentsPropsType = {
   filter?: string;
   tags?: string;
-  orgPriority?: boolean;
-  dataType: "abook" | "profile";
   id: string;
   name: string;
+  use: "private" | "corp";
+  color?: string;
+  icon?: string;
+  editing?: string; // record-id
 };
 
 function reformResponse(resp: {}) {
@@ -69,7 +81,7 @@ function reformResponse(resp: {}) {
       data["statusMessage"] ||
       data["statusText"] ||
       data["message"] ||
-      "Error: something is wrong";
+      `Error: something is wrong(${statusCode})`;
   }
   data["statusCode"] = statusCode;
   return data;
@@ -172,4 +184,12 @@ const ajaxPost = (
     });
 };
 
-export { AppVal, ajaxGet, ajaxPost, reformText, ContentsPropsType };
+export {
+  AppVal,
+  ajaxGet,
+  ajaxPost,
+  reformText,
+  ContentsPropsType,
+  getHomeAddressID,
+  isHomeAddress
+};

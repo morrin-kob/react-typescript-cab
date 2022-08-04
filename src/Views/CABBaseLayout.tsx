@@ -17,7 +17,7 @@ import { ReferencedSymbol } from "typescript";
 export type CABBaseProps = {
   getSidebar?: () => JSX.Element;
   loginable: boolean;
-  contents: ReactNode;
+  children: ReactNode;
 };
 
 const CABBaseLayout: React.FC<CABBaseProps> = (props) => {
@@ -50,7 +50,7 @@ const CABBaseLayout: React.FC<CABBaseProps> = (props) => {
         <div id="outer">
           <div id="contents-frame">
             <div id="contents">
-              {props.contents}
+              {props.children}
               <AppFooter text={AppVal.Footer.copyright()} />
             </div>
           </div>
