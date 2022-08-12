@@ -375,7 +375,13 @@ export const UserContextProvider: React.FC<{ children: React.ReactNode }> = ({
   const Logoff = () => {
     if (isUserLoggedIn()) {
       // ナンヤカンヤ
-      setValues({ ...user, userId: 0, isLoggedIn: false });
+      setValues({
+        ...user,
+        userId: 0,
+        isLoggedIn: false,
+        a_token: "",
+        r_token: ""
+      });
       localStorage.setItem("user", "");
     }
   };
@@ -397,7 +403,12 @@ export const UserContextProvider: React.FC<{ children: React.ReactNode }> = ({
         csr: getCsr()
       },
       (resp) => {
-        console.log(`resp:${JSON.stringify(resp)}`);
+        let resdata = {
+          a_token: "",
+          id_token: "",
+          r_token: ""
+        };
+        //console.log(`resp:${JSON.stringify(resp)}`);
         if ("data" in resp) {
           const data = resp["data"];
 
@@ -410,13 +421,16 @@ export const UserContextProvider: React.FC<{ children: React.ReactNode }> = ({
           setValues(userdata);
           localStorage.setItem("user", JSON.stringify(userdata));
 
-          let resdata = {
+          resdata = {
+            ...resdata,
             a_token: data.access_token,
             id_token: data.id_token,
             r_token: data.refresh_token
           };
-          result(resdata);
+        } else {
+          Logoff();
         }
+        result(resdata);
       }
     );
   };
@@ -434,6 +448,7 @@ export const UserContextProvider: React.FC<{ children: React.ReactNode }> = ({
           callbackfunc(json);
         });
       } else {
+        Logoff();
         callbackfunc({ statusCode: 500, error: "something is wrong" });
       }
     });

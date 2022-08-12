@@ -16,7 +16,8 @@ export default function AppFooter(props: FooterType) {
         left: 0,
         right: 0,
         py: 0.6,
-        backgroundColor: "#f0f0f0"
+        backgroundColor: "#f0f0f0",
+        textAlign: "center"
       }}
       elevation={3}
     >

@@ -64,8 +64,8 @@ h2 {
   padding: 3pt 0.6em;
 }
 h3 {
-  font-size: 108%;
-  margin: 0 0 0.5ex 0em;
+  font-size: 106%;
+  margin: 4pt 0 4pt 0em;
   padding: 3pt 1em 2pt 1em;
 }
 h4 {
@@ -323,6 +323,7 @@ footer {
   clear: both;
   display: block;
   width: 100%;
+  text-align: center;
   height: var(--cy-footer);
   padding: 3pt;
   overflow: hidden;
@@ -392,7 +393,8 @@ h5 {
 }
 ***/
 h1,
-h2 {
+h2,
+h3 {
   background-color: #c00000;
   color: white;
 }
@@ -1038,7 +1040,7 @@ a:hover.menuitem3_sel {
 /*---------------------------------------------------------------*/
 
 .App {
-  text-align: center;
+  /* text-align: center;*/
 }
 
 .App-logo {
@@ -1080,4 +1082,11 @@ a:hover.menuitem3_sel {
 #ablist {
   height: calc(100vh - 12em);
   overflow: auto;
+}
+.editConts {
+  height: calc(100vh - 8.6em);
+  overflow: auto;
+}
+.datepicker {
+  width: 100%;
 }

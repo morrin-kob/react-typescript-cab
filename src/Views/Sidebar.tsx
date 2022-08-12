@@ -71,7 +71,7 @@ function CABBookList(props: {
       uag: user.getUag()
     };
     ajaxGet(endpoint, params, (json) => {
-      //console.log( JSON.stringify(json) );
+      console.log(JSON.stringify(json));
       if ("statusCode" in json && parseInt(json["statusCode"], 10) === 401) {
         user.RefreshAndRetry(endpoint, "GET", params, (json: {}) => {
           if ("data" in json) {

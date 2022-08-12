@@ -1,5 +1,6 @@
 //import React, { useContext, useEffect, useMemo } from "react";
 import * as React from "react";
+import { useContext, ReactNode, Children } from "react";
 import { UserContext, UserContextType } from "../Account";
 import Dialog from "@mui/material/Dialog";
 import DialogTitle from "@mui/material/DialogTitle";
@@ -14,6 +15,21 @@ import Table from "@mui/material/Table";
 import TableBody from "@mui/material/TableBody";
 import TableCell from "@mui/material/TableCell";
 import TableRow from "@mui/material/TableRow";
+import Grid from "@mui/material/Grid";
+import Paper from "@mui/material/Paper";
+import Divider from "@mui/material/Divider";
+import TextField from "@mui/material/TextField";
+import Select, { SelectChangeEvent } from "@mui/material/Select";
+import MenuItem from "@mui/material/MenuItem";
+import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown";
+import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
+import KeyboardArrowUpIcon from "@mui/icons-material/KeyboardArrowUp";
+import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
+import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns";
+import ja from "date-fns/locale/ja";
+import { MobileDatePicker } from "@mui/x-date-pickers/MobileDatePicker";
+import { useTheme } from "@mui/material/styles";
+
 import {
   AppVal,
   ajaxGet,
@@ -26,6 +42,9 @@ import { SvgIcon } from "@mui/material";
 import DefPersonImg from "../assets/images/person.png";
 import { isMobile } from "react-device-detect";
 import { BrowserView, MobileView } from "react-device-detect";
+
+import { ThemeProvider, createTheme } from "@mui/material/styles";
+import type {} from "@mui/x-date-pickers/themeAugmentation";
 
 export type AddrBlock = {
   kindof: "home" | "office" | null;
@@ -124,6 +143,7 @@ export type RecordType = {
 type ABRecDialogPropsType = {
   user: UserContextType;
   abook: ContentsPropsType;
+  onEdit: (abookId: string, rec: RecordType) => void;
 };
 
 type ABRecDialogStateType = {
@@ -133,6 +153,14 @@ type ABRecDialogStateType = {
   status: "loading" | "success" | "error";
   statusText: string;
   data: RecordType;
+};
+type ABRecEditStateType = {
+  abid: string;
+  recid: string;
+  name: string;
+  status?: "loading" | "success" | "error";
+  statusText?: string;
+  data?: RecordType;
 };
 
 export const ReformName = (rec: RecordType) => {
@@ -199,6 +227,54 @@ const createData: createDataType = (
 ) => {
   return { title, data, icon, link, command };
 };
+
+function PersonalPicture(props: {
+  abId: string;
+  rec: RecordType;
+  cx: number;
+  cy: number;
+}) {
+  const user = useContext(UserContext);
+
+  const [imgurl, setImgurl] = React.useState("");
+  let url = "";
+  if (!imgurl && props.rec.face_picture && props.rec.face_picture.image) {
+    url = `${user.getEpm()}/p/get_address_face/`; //get_address_pict
+    if (isHomeAddress(props.abId)) {
+      url += `homeaddress/${props.rec.id}`;
+    } else {
+      url += `${props.rec.id}/${props.rec.face_picture.image}.jpg?t=T`;
+    }
+
+    // setTimeout(() => {
+    //   setImgurl(url);
+    // }, 500);
+  }
+  //   let params = {
+  //     t: "T",
+  //     atk: user.getAToken(),
+  //     ept: user.getEpm(),
+  //     uag: user.getUag()
+  //   };
+  //   console.log(`ImageUrl-url:${url}`);
+  //   ajaxGet(url, params, (json) => {
+  //     setImgurl(JSON.stringify(json));
+  //   });
+  // }
+
+  let cont = (
+    <img
+      src={DefPersonImg}
+      style={{ width: props.cx, height: props.cy }}
+      alt=""
+    />
+  );
+  if (url) {
+    cont = <img src={url} style={{ width: props.cx }} alt="" />;
+  }
+
+  return cont;
+}
 
 //
 // 1レコードの詳細データの出力
@@ -395,17 +471,25 @@ export default class ABRecDialog extends React.Component<
   }
 
   handleClose = () => {
-    this.setState({ open: false });
+    this.setState({ ...this.state, status: "loading", open: false });
+  };
+
+  handleEdit = () => {
+    this.handleClose();
+    console.log(`Edit:${JSON.stringify(this.state.data)}`);
+    this.props.onEdit(this.props.abook.id, this.state.data);
   };
 
   render() {
-    if (this.state.status === "loading") {
+    if (this.state.open === true && this.state.status === "loading") {
       if (this.state.data.id === this.state.recid) {
-        this.setState({
-          ...this.state,
-          status: "success",
-          statusText: "ok"
-        });
+        if (this.state.recid) {
+          this.setState({
+            ...this.state,
+            status: "success",
+            statusText: "ok"
+          });
+        }
       } else {
         loadRecord(
           this.props.user,
@@ -438,12 +522,16 @@ export default class ABRecDialog extends React.Component<
     let name = this.state.name;
     let cont = <></>;
     if (this.state.status === "loading") {
-      cont = (
-        <Box sx={{ width: "calc( 80vw )", mt: 10, textAlign: "center" }}>
-          <div className="textcenter">loading...</div>
-          <CircularProgress />
-        </Box>
-      );
+      if (this.state.open) {
+        cont = (
+          <Box
+            sx={{ width: "40em", maxWidth: "80%", mt: 10, textAlign: "center" }}
+          >
+            <div className="textcenter">loading...</div>
+            <CircularProgress />
+          </Box>
+        );
+      }
     } else if (this.state.status === "success") {
       const rec: RecordType = this.state.data;
       name = ReformName(rec);
@@ -451,14 +539,16 @@ export default class ABRecDialog extends React.Component<
       const rows = OutRecord(rec);
 
       //createData("name", name), createData("dessert", "Cupcake")];
+
       cont = (
         <div>
           <Box display="grid" gridTemplateColumns="repeat(12, 1fr)" gap={2}>
             <Box gridColumn="span 2">
-              <img
-                src={DefPersonImg}
-                style={{ width: 64, height: 64 }}
-                alt=""
+              <PersonalPicture
+                abId={this.props.abook.id}
+                rec={rec}
+                cx={64}
+                cy={64}
               />
             </Box>
             <Box gridColumn="span 10">
@@ -544,7 +634,7 @@ export default class ABRecDialog extends React.Component<
       buttons.push(makeButton("削除", "warning", this.handleClose));
       buttons.push(makeButton("他のユーザに送信", "primary", this.handleClose));
       buttons.push(makeButton("コピー", "primary", this.handleClose));
-      buttons.push(makeButton("編集", "success", this.handleClose));
+      buttons.push(makeButton("編集", "success", this.handleEdit));
     }
     buttons.push(makeButton("閉じる", "primary", this.handleClose));
 
@@ -585,250 +675,427 @@ export default class ABRecDialog extends React.Component<
   }
 }
 
-export const ABRecDialog2: React.FC = (props: ABRecDialogPropsType) => {
-  const [state, setState] = React.useState<ABRecDialogStateType>({
-    open: false,
-    recid: props.abook.id,
-    name: "",
-    status: "loading",
-    statusText: "",
-    data: { id: "" }
-  });
+const FieldTitle = (props: { title: string }) => {
+  return (
+    <h5 style={{ marginBottom: "2ex", marginTop: "2ex" }}>{props.title}</h5>
+  );
+};
 
-  const handleClose = () => {
-    setState({ ...state, open: false });
-  };
+type FieldEditProps = {
+  label: string;
+  field: string;
+  rec: RecordType;
+  options?: string[];
+  onChangeField: (field: string, value: string) => void;
+};
 
-  if (state.data.id !== state.recid) {
-    // load
-    let url = `${props.user.getEpt()}/`;
-    if (isHomeAddress(props.abook.id)) {
-      url += `homeaddress/${state.recid}`;
-    } else {
-      url += `address/${state.recid}`;
-    }
-    let params = {
-      atk: props.user.getAToken(),
-      ept: props.user.getEpm(),
-      uag: props.user.getUag()
-    };
+const FieldEditBox = (props: FieldEditProps) => {
+  return (
+    <Paper sx={{ width: "100%", mt: 1, mb: 0 }}>
+      <TextField
+        variant="outlined"
+        sx={{ width: "100%", mt: -0.24 }}
+        size="small"
+        placeholder={props.label}
+        value={props.rec[props.field]}
+        onChange={(e) => props.onChangeField(props.field, e.target.value)}
+      />
+    </Paper>
+  );
+};
 
-    setState({
-      ...state,
-      data: { id: state.recid },
-      status: "loading",
-      statusText: ""
-    });
+const FieldTextArea = (props: FieldEditProps) => {
+  return (
+    <Paper sx={{ width: "100%", mt: 1, mb: 0 }}>
+      <TextField
+        variant="outlined"
+        sx={{ width: "100%", mt: -0.24 }}
+        multiline
+        rows={3}
+        placeholder={props.label}
+        value={props.rec[props.field]}
+        onChange={(e) => props.onChangeField(props.field, e.target.value)}
+      />
+    </Paper>
+  );
+};
 
-    ajaxGet(url, params, (json) => {
-      if ("data" in json) {
-        setState({
-          ...state,
-          data: json["data"],
-          status: "success",
-          statusText: "ok"
-        });
-      } else {
-        if (
-          "statusCode" in json &&
-          parseInt(json["statusCode"], 10) === 401 // atoken got timeouted
-        ) {
-          props.user.RefreshAndRetry(url, "GET", params, (json: {}) => {
-            if ("data" in json) {
-              setState({
-                ...state,
-                data: json["data"],
-                status: "success",
-                statusText: "ok"
-              });
-            } else {
-              let error: string =
-                json["error"] ||
-                json["statusMessage"] ||
-                "ロードに失敗しました";
-              setState({
-                ...state,
-                status: "error",
-                statusText: error
-              });
+const FieldComboBox = (props: FieldEditProps) => {
+  return (
+    <Paper sx={{ width: "100%", mt: 1, mb: 0 }}>
+      <Select
+        variant="outlined"
+        sx={{ width: "100%", mt: -0.24 }}
+        size="small"
+        value={props.rec[props.field]}
+        onChange={(e) => props.onChangeField(props.field, e.target.value)}
+        displayEmpty
+        inputProps={{ "aria-label": "Without label" }}
+      >
+        <MenuItem value="">&nbsp;</MenuItem>
+        {props.options &&
+          props.options.map((option) => (
+            <MenuItem value={option}>{option}</MenuItem>
+          ))}
+      </Select>
+    </Paper>
+  );
+};
+// sx={{ width: "100%", mt: 1, mb: 0, backgroundColor: "white" }}
+// size="small"
+
+const FieldDatePicker = (props: FieldEditProps) => {
+  const baseTheme = useTheme();
+  const theme = createTheme(
+    { ...baseTheme },
+    {
+      components: {
+        MuiDatePicker: {
+          styleOverrides: {
+            root: {
+              backgroundColor: "red"
             }
-          });
-        } else {
-          let error: string =
-            json["error"] ||
-            json["statusMessage"] ||
-            `${JSON.stringify(json)}:ロードに失敗しました`;
-          setState({
-            ...state,
-            status: "error",
-            statusText: error
-          });
+          }
         }
       }
-    });
-  }
-
-  let name = state.name;
-
-  let cont = (
-    <Box sx={{ width: "calc( 80vw )", mt: 10, textAlign: "center" }}>
-      <div className="textcenter">loading...</div>
-      <CircularProgress />
-    </Box>
+    }
   );
 
-  if (state.data.id && state.data.id === state.recid) {
-    if (state.status === "success") {
-      const rec: RecordType = state.data;
-      name = ReformName(rec);
-
-      const rows = OutRecord(rec);
-
-      //createData("name", name), createData("dessert", "Cupcake")];
-      cont = (
-        <div>
-          <Box display="grid" gridTemplateColumns="repeat(12, 1fr)" gap={2}>
-            <Box gridColumn="span 2">
-              <img
-                src={DefPersonImg}
-                style={{ width: 64, height: 64 }}
-                alt=""
-              />
-            </Box>
-            <Box gridColumn="span 10">
-              <Table aria-label="simple table">
-                <TableBody>
-                  {rows.map((row) => (
-                    <TableRow key={row.title} sx={{ height: "1.2em" }}>
-                      <TableCell
-                        align="left"
-                        sx={{ py: 1, width: "10em", height: "1.2em" }}
-                      >
-                        {row.title}
-                      </TableCell>
-                      <TableCell
-                        size="medium"
-                        align="left"
-                        sx={{ py: 1, height: "1.2em" }}
-                      >
-                        {row.data.split(/\n|<br>|<br \/>/i).map((str) => {
-                          return <div>{str}</div>;
-                        })}
-                      </TableCell>
-                      <TableCell
-                        size="medium"
-                        align="left"
-                        sx={{ py: 1, width: "2em" }}
-                      >
-                        {row.icon && row.link && (
-                          <a href={row.link} target="cabhref">
-                            <row.icon />
-                          </a>
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </Box>
-          </Box>
-        </div>
-      );
-    } else if (state.status === "error") {
-      cont = (
-        <div style={{ width: "calc( 80vw )" }}>
-          <h3>failed</h3>
-          <p>{state.statusText}</p>
-        </div>
-      );
-    }
-  }
-  type DlgButtonProps = {
-    caption: string;
-    color:
-      | "inherit"
-      | "primary"
-      | "secondary"
-      | "success"
-      | "error"
-      | "info"
-      | "warning";
-    onclick: () => void;
+  const FullWidth = {
+    display: "flex",
+    "flex-direction": "column",
+    width: "100%"
   };
+  return (
+    <LocalizationProvider dateAdapter={AdapterDateFns} adapterLocale={ja}>
+      <Paper>
+        <div style={FullWidth}>
+          <ThemeProvider theme={theme}>
+            <MobileDatePicker
+              className="datepicker"
+              leftArrowButtonText="前月"
+              rightArrowButtonText="翌月"
+              label={props.label}
+              inputFormat="yyyy年MM月dd日"
+              mask="____年__月__日"
+              toolbarFormat="yyyy年MM月"
+              value={props.rec[props.field]}
+              onChange={(newValue: Date | null) =>
+                props.onChangeField(props.field, `${newValue || ""}`)
+              }
+              renderInput={(params) => <TextField {...params} />}
+            />
+          </ThemeProvider>
+        </div>
+      </Paper>
+    </LocalizationProvider>
+  );
+};
 
-  type MakeButtonType = (
-    caption: string,
-    color:
-      | "inherit"
-      | "primary"
-      | "secondary"
-      | "success"
-      | "error"
-      | "info"
-      | "warning",
-    onclick: () => void
-  ) => DlgButtonProps;
+type EditBlockProp = {
+  abid: string;
+  rec: RecordType;
+  onChangeField: (field: string, value: string) => void;
+};
 
-  const makeButton: MakeButtonType = (caption, color, onclick) => {
-    return { caption: caption, color: color, onclick: onclick };
-  };
+const PictWidth = 128;
+const PictMargin = 4;
+const PictAreaWidth = PictWidth + PictMargin;
 
-  const buttons: DlgButtonProps[] = [];
-  if (state.status === "success") {
-    buttons.push(makeButton("削除", "warning", handleClose));
-    buttons.push(makeButton("他のユーザに送信", "primary", handleClose));
-    buttons.push(makeButton("コピー", "primary", handleClose));
-    buttons.push(makeButton("編集", "success", handleClose));
-  }
-  buttons.push(makeButton("閉じる", "primary", handleClose));
-
-  let cxDlg = isMobile ? "100%" : "70%";
+const EditBlockName = (props: EditBlockProp) => {
+  const [detail, setDetail] = React.useState<boolean>(false);
 
   return (
-    <Dialog open={state.open} onClose={handleClose}>
-      <DialogTitle sx={{ width: { cxDlg }, maxWidth: 600 }}>
-        {name}
-        <IconButton
-          aria-label="close"
-          onClick={handleClose}
+    <Grid container>
+      <Grid item sx={{ width: `calc( 100% - ${PictAreaWidth}px )` }}>
+        <Paper
+          component="form"
           sx={{
-            color: "white",
-            position: "absolute",
-            right: 8,
-            top: 8
+            backgroundColor: "#f0f0f0"
           }}
         >
-          <CloseIcon />
-        </IconButton>
-      </DialogTitle>
-      <DialogContent>{cont}</DialogContent>
-      <DialogActions>
-        {buttons.map((button) => {
-          return (
-            <Button
-              color={button.color}
-              variant="contained"
-              onClick={button.onclick}
-            >
-              {button.caption}
-            </Button>
-          );
-        })}
-      </DialogActions>
-    </Dialog>
+          <Grid container={true} columns={15}>
+            {/* ------ 氏名の行 ------ */}
+            <Grid item={true} xs={3} sx={{ pl: 2 }}>
+              <FieldTitle title="氏名" />
+            </Grid>
+            <Grid item={true} xs={4} sx={{ px: 1 }}>
+              <FieldEditBox
+                rec={props.rec}
+                label="姓"
+                field="lastname"
+                onChangeField={props.onChangeField}
+              />
+            </Grid>
+            <Grid item={true} xs={4} sx={{ px: 1 }}>
+              <FieldEditBox
+                rec={props.rec}
+                label="名"
+                field="firstname"
+                onChangeField={props.onChangeField}
+              />
+            </Grid>
+            <Grid item={true} xs={4} sx={{ px: 1 }}>
+              <FieldComboBox
+                rec={props.rec}
+                label="敬称"
+                field="suffix"
+                options={[
+                  "様",
+                  "殿",
+                  "御中",
+                  "行",
+                  "宛",
+                  "先生",
+                  "君",
+                  "くん",
+                  "さん",
+                  "ちゃん"
+                ]}
+                onChangeField={props.onChangeField}
+              />
+            </Grid>
+            {/* ------ フリガナの行 ------ */}
+            <Grid item={true} xs={3} sx={{ pl: 2 }}>
+              <FieldTitle title="フリガナ" />
+            </Grid>
+            <Grid item={true} xs={4} sx={{ px: 1 }}>
+              <FieldEditBox
+                rec={props.rec}
+                label="姓フリガナ"
+                field="lastkana"
+                onChangeField={props.onChangeField}
+              />
+            </Grid>
+            <Grid item={true} xs={4} sx={{ px: 1 }}>
+              <FieldEditBox
+                rec={props.rec}
+                label="名フリガナ"
+                field="firstkana"
+                onChangeField={props.onChangeField}
+              />
+            </Grid>
+            <Grid item={true} xs={4} sx={{ px: 1 }}></Grid>
+
+            <Grid item={true} xs={15} sx={{ px: 1 }}>
+              <Divider />
+            </Grid>
+
+            {/* ------ タグの行 ------ */}
+            <Grid item={true} xs={3} sx={{ pl: 2 }}>
+              <FieldTitle title="タグ" />
+            </Grid>
+            <Grid item={true} xs={10} sx={{ px: 1 }}>
+              <FieldEditBox
+                rec={props.rec}
+                label="タグ"
+                field="tags"
+                onChangeField={props.onChangeField}
+              />
+            </Grid>
+            <Grid item={true} xs={2} sx={{ px: 1, mt: 1 }}>
+              <Button
+                onClick={() => {
+                  setDetail(!detail);
+                }}
+              >
+                {!detail ? <KeyboardArrowDownIcon /> : <KeyboardArrowUpIcon />}
+              </Button>
+            </Grid>
+
+            {/* ------ 詳細の始まり ------ */}
+            {detail && (
+              <>
+                {/* ------ 誕生日＆性別　の行 ------ */}
+                <Grid item={true} xs={3} sx={{ pl: 2 }}>
+                  <FieldTitle title="誕生日" />
+                </Grid>
+                <Grid item={true} xs={5} sx={{ px: 1 }}>
+                  <FieldDatePicker
+                    rec={props.rec}
+                    label="誕生日"
+                    field="birthdate"
+                    onChangeField={props.onChangeField}
+                  />
+                </Grid>
+                <Grid item={true} xs={2} sx={{ pl: 2 }}>
+                  <FieldTitle title="性別" />
+                </Grid>
+                <Grid item={true} xs={4} sx={{ px: 1 }}>
+                  <FieldComboBox
+                    rec={props.rec}
+                    label="性別"
+                    field="gender"
+                    options={["男性", "女性", "その他"]}
+                    onChangeField={props.onChangeField}
+                  />
+                </Grid>
+
+                {/* ------ 顧客コードの行 ------ */}
+                <Grid item={true} xs={3} sx={{ pl: 2 }}>
+                  <FieldTitle title="顧客コード" />
+                </Grid>
+                <Grid item={true} xs={5} sx={{ px: 1 }}>
+                  <FieldEditBox
+                    rec={props.rec}
+                    label="顧客コード"
+                    field="code"
+                    onChangeField={props.onChangeField}
+                  />
+                </Grid>
+                <Grid item={true} xs={7} sx={{ px: 1 }}></Grid>
+
+                {/* ------ メモの行 ------ */}
+                <Grid item={true} xs={3} sx={{ pl: 2 }}>
+                  <FieldTitle title="メモ" />
+                </Grid>
+                {/* FieldTextArea */}
+                <Grid item={true} xs={8} sx={{ px: 1 }}>
+                  <FieldTextArea
+                    rec={props.rec}
+                    label="メモ"
+                    field="memo"
+                    onChangeField={props.onChangeField}
+                  />
+                </Grid>
+                <Grid item={true} xs={5} sx={{ px: 1 }}></Grid>
+                <Grid item={true} xs={15} sx={{ px: 1 }}>
+                  &nbsp;
+                </Grid>
+              </>
+            )}
+          </Grid>
+        </Paper>
+      </Grid>
+      <Grid item sx={{ width: PictAreaWidth }}>
+        <Box gridColumn="span 2">
+          <PersonalPicture
+            abId={props.abid}
+            rec={props.rec}
+            cx={PictWidth}
+            cy={PictWidth}
+          />
+        </Box>
+      </Grid>
+    </Grid>
   );
 };
 
-const ABEditRecord: React.FC = (props: {
-  rec: RecordType;
-  onEndEdit: () => void;
-}) => {
-  return (
-    <>
-      <p>{JSON.stringify(props.rec)}</p>
-      <Button onClick={props.onEndEdit}>戻る</Button>
-    </>
-  );
+const ABEditRecord = (props: { rec: ABRecEditStateType }) => {
+  const user = useContext(UserContext);
+
+  const [state, setState] = React.useState<ABRecEditStateType>({
+    abid: props.rec.abid,
+    recid: props.rec.recid,
+    name: props.rec.name,
+    status: "loading",
+    statusText: "",
+    data: props.rec.data
+  });
+
+  if (state.status === "loading") {
+    if (props.rec.recid === "new") {
+      setState({ ...state, status: "success" });
+    } else if (state.data && state.data.code) {
+      setState({ ...state, status: "success" });
+    } else {
+      loadRecord(user, props.rec.abid, props.rec.recid, (json) => {
+        if ("data" in json) {
+          setState({ ...state, status: "success", data: json["data"] });
+        } else {
+          let error = json["error"] || json["statusText"] || "load error";
+          setState({ ...state, status: "error", statusText: error });
+        }
+      });
+    }
+  }
+
+  const editCallback = (field: string, value: string) => {
+    let newval: RecordType = {
+      ...state.data,
+      id: state.data ? state.data.id : ""
+    };
+    newval[field] = value;
+    setState({ ...state, data: newval });
+    console.log(`${field}=${value}`);
+  };
+
+  let cont = <></>;
+  if (state.status === "loading") {
+    cont = (
+      <Box sx={{ width: "calc( 80vw )", mt: 10, textAlign: "center" }}>
+        <div className="textcenter">loading...</div>
+        <CircularProgress />
+      </Box>
+    );
+  } else if (state.status === "success") {
+    const rec: RecordType = state.data ? state.data : { id: "" };
+
+    const rows = OutRecord(rec);
+
+    //createData("name", name), createData("dessert", "Cupcake")];
+    cont = (
+      <div className="editConts">
+        <EditBlockName
+          abid={state.abid}
+          rec={rec}
+          onChangeField={editCallback}
+        />
+
+        <Box display="grid" gridTemplateColumns="repeat(12, 1fr)" gap={2}>
+          <Box gridColumn="span 10">
+            <Table aria-label="simple table">
+              <TableBody>
+                {rows.map((row) => (
+                  <TableRow key={row.title} sx={{ height: "1.2em" }}>
+                    <TableCell
+                      align="left"
+                      sx={{ py: 1, width: "10em", height: "1.2em" }}
+                    >
+                      {row.title}
+                    </TableCell>
+                    <TableCell
+                      size="medium"
+                      align="left"
+                      sx={{ py: 1, height: "1.2em" }}
+                    >
+                      {row.data.split(/\n|<br>|<br \/>/i).map((str) => {
+                        return <div>{str}</div>;
+                      })}
+                    </TableCell>
+                    <TableCell
+                      size="medium"
+                      align="left"
+                      sx={{ py: 1, width: "2em" }}
+                    >
+                      {row.icon && row.link && (
+                        <a href={row.link} target="cabhref">
+                          <row.icon />
+                        </a>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </Box>
+        </Box>
+      </div>
+    );
+  } else if (state.status === "error") {
+    cont = (
+      <div style={{ width: "calc( 80vw )" }}>
+        <h3>failed</h3>
+        <p>{state.statusText}</p>
+      </div>
+    );
+  }
+  return <>{cont}</>;
 };
 
-export { ABRecDialogPropsType, ABRecDialogStateType, ABEditRecord };
+export {
+  ABRecDialogPropsType,
+  ABRecDialogStateType,
+  ABRecEditStateType,
+  ABEditRecord
+};

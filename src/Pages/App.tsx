@@ -1,8 +1,12 @@
 import * as React from "react";
 //import { Footer } from "../components/Framing";
-import { CABContents, CABCtrlBar } from "../Views/CloudAB";
+import { CABContents, CABCtrlBar, CABEditCtrlBar } from "../Views/CloudAB";
 import { CABSidebar, SBParamsType } from "../Views/Sidebar";
-import { RecordType, ABEditRecord } from "../Views/ABRecord";
+import {
+  RecordType,
+  ABRecEditStateType,
+  ABEditRecord
+} from "../Views/ABRecord";
 import "../App.css";
 import { ContentsPropsType } from "../AppSettings";
 import CABBaseLayout from "../Views/CABBaseLayout";
@@ -10,7 +14,7 @@ import { useParams } from "react-router-dom";
 import { createBrowserHistory } from "history";
 import Button from "@mui/material/Button";
 
-let editingRec: RecordType = { id: "" };
+let editingRec: ABRecEditStateType = { abid: "", recid: "", name: "" };
 
 export const App: React.FC = () => {
   let { abId, recId } = useParams();
@@ -25,8 +29,10 @@ export const App: React.FC = () => {
 
   const params: SBParamsType = { abId: abId || "", recId: recId || "" };
 
-  const onEditRecord = (params: RecordType) => {
-    editingRec = { ...params };
+  const onEditRecord = (abookId: string, rec: RecordType) => {
+    editingRec.abid = abookId;
+    editingRec.recid = rec.id;
+    editingRec.data = rec;
     setMode("edit");
   };
 
@@ -81,7 +87,11 @@ export const App: React.FC = () => {
         </CABCtrlBar>
       );
     } else if (mode === "edit") {
-      return <ABEditRecord rec={editingRec} onEndEdit={onEndEditRecord} />;
+      return (
+        <CABEditCtrlBar rec={editingRec} onEndEdit={onEndEditRecord}>
+          <ABEditRecord rec={editingRec} />
+        </CABEditCtrlBar>
+      );
     }
     return <></>;
   };

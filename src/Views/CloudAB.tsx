@@ -1,7 +1,11 @@
 import * as React from "react";
 import { useContext, ReactNode, Children } from "react";
 import { UserContext, UserContextType } from "../Account";
-import ABRecDialog, { RecordType, ReformName } from "./ABRecord";
+import ABRecDialog, {
+  RecordType,
+  ABRecEditStateType,
+  ReformName
+} from "./ABRecord";
 import CheckableEditableTable, {
   CETColumnType
 } from "../components/TableWithCheck";
@@ -100,7 +104,7 @@ let abinfo: ABInfoType = {
 
 function CABAddressList(props: {
   abook: ContentsPropsType;
-  onEditRecord: (params: RecordType) => void;
+  onEditRecord: (abookId: string, rec: RecordType) => void;
 }) {
   const user = useContext(UserContext);
   //const [loaded, setLoaded] = React.useState(false);
@@ -125,7 +129,7 @@ function CABAddressList(props: {
   const recdlg = useRef<ABRecDialog>(null);
 
   const handleOnEdit = (key: string, label: string) => {
-    props.onEditRecord({ id: key });
+    props.onEditRecord(props.abook.id, { id: key });
     // if (recdlg && recdlg.current) {
     //   recdlg.current.setState({
     //     recid: key,
@@ -137,6 +141,8 @@ function CABAddressList(props: {
   const handleOnShowDetail = (key: string, label: string) => {
     if (recdlg && recdlg.current) {
       recdlg.current.setState({
+        ...recdlg.current.state,
+        //status: "loading",
         recid: key,
         name: label,
         open: true
@@ -372,7 +378,12 @@ function CABAddressList(props: {
             }}
           />
 
-          <ABRecDialog user={user} abook={props.abook} ref={recdlg} />
+          <ABRecDialog
+            user={user}
+            abook={props.abook}
+            onEdit={props.onEditRecord}
+            ref={recdlg}
+          />
         </div>
       );
     }
@@ -591,7 +602,7 @@ class CABCtrlBar extends React.Component<CABCtrlBarProps, ContentsPropsType> {
 
 function CABContents(props: {
   abook: ContentsPropsType;
-  onEditRecord: (params: RecordType) => void;
+  onEditRecord: (abookId: string, rec: RecordType) => void;
 }) {
   const user = useContext(UserContext);
 
@@ -618,4 +629,51 @@ function CABContents(props: {
   return cont;
 }
 
-export { CABContents, CABAddressList, CABCtrlBar };
+export type CABEditCtrlBarProps = {
+  rec: ABRecEditStateType;
+  onEndEdit: () => void;
+  children: ReactNode;
+};
+const CABEditCtrlBar = (props: CABEditCtrlBarProps) => {
+  // const childrenWithProps = Children.map(props.children, (child) => {
+  //   switch (typeof child) {
+  //     case "string":
+  //       return child;
+  //     case "object":
+  //       return React.cloneElement(
+  //         child as React.ReactElement<{
+  //           rec: ABRecEditStateType;
+  //         }>,
+  //         { rec: props.rec }
+  //       );
+  //     default:
+  //       //console.log(`child type=${typeof child}`);
+  //       return null;
+  //   }
+  // });
+  return (
+    <>
+      <Box sx={{ width: "100%", align: "left" }}>
+        <Button
+          variant="outlined"
+          onClick={(e) => {
+            props.onEndEdit();
+          }}
+        >
+          戻る
+        </Button>
+        <Button color="info">保存</Button>
+        <Button variant="outlined">保存して新規作成</Button>
+        <Button variant="outlined">
+          <DeleteForeverIcon />
+        </Button>
+      </Box>
+      <Box>
+        <h3>レコードの編集</h3>
+      </Box>
+      {props.children}
+    </>
+  );
+};
+
+export { CABContents, CABAddressList, CABCtrlBar, CABEditCtrlBar };

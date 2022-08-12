@@ -81,7 +81,7 @@ function reformResponse(resp: {}) {
       data["statusMessage"] ||
       data["statusText"] ||
       data["message"] ||
-      `Error: something is wrong(${statusCode})`;
+      `Error: something is wrong(${JSON.stringify(resp)})`;
   }
   data["statusCode"] = statusCode;
   return data;
@@ -110,7 +110,9 @@ const ajaxGet = (
         paramlist += params[key];
       }
     }
-    if (paramlist) url += "?" + paramlist;
+    if (paramlist.length) {
+      url += `?${paramlist}`;
+    }
   }
 
   fetch(url, {

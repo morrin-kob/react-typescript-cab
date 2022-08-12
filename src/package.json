@@ -11,6 +11,7 @@
     "@mui/icons-material": "latest",
     "@mui/material": "5.8.7",
     "@mui/x-data-grid": "latest",
+    "@mui/x-date-pickers": "latest",
     "material-ui-popup-state": "^2.0.0",
     "react": "latest",
     "react-dom": "latest",
