@@ -105,7 +105,7 @@ export default class ABSettings extends React.Component<
   }
 
   handleOpen = (abook: ContentsPropsType) => {
-    this.setState({ ...this.state, open: true, abook: abook });
+    this.setState({ open: true, abname: abook.name, abook: abook });
   };
 
   handleClose = () => {
@@ -119,6 +119,38 @@ export default class ABSettings extends React.Component<
     this.setState({ ...this.state, abook: newVal });
   };
 
+  colorlist: string[] = [
+    "d7000f",
+    "e16600",
+    "ffa700",
+    "7cc500",
+    "009200",
+    "009a9a",
+    "0068c5",
+    "00ace3",
+
+    "8152a8",
+    "fa578f",
+    "a51e4b",
+    "cf9200",
+    "164f80",
+    "c24949",
+    "ac5600",
+    "8c8c00"
+  ];
+
+  getCurrABColor = () => {
+    return this.state && this.state.abook.color
+      ? this.state.abook.color.toLowerCase()
+      : this.colorlist[0];
+  };
+
+  handleSetColor = (col: string) => {
+    if (this.getCurrABColor() !== col) {
+      this.onChangeField("color", col);
+    }
+  };
+
   render() {
     const buttons: DlgButtonProps[] = [
       { caption: "保存", color: "success", onclick: this.handleSave },
@@ -128,6 +160,11 @@ export default class ABSettings extends React.Component<
     let cont = <></>;
 
     let cxDlg: string = isMobile ? "calc( 100vw )" : "calc( 70vw )";
+
+    let cxBox = 36;
+    let cyBox = 36;
+    let cbareaWidth = cxBox * 8;
+
     return (
       <Dialog open={this.state.open} onClose={this.handleClose}>
         <DialogTitle sx={{ width: cxDlg, minWidth: "12em", maxWidth: 600 }}>
@@ -155,20 +192,20 @@ export default class ABSettings extends React.Component<
             onChangeField={this.onChangeField}
           />
           {/* --------------------------------- */}
-          <ColorBox
-            width={36}
-            height={36}
-            color="#ff0000"
-            checked={true}
-            onClick={(color) => {}}
-          />
-          <ColorBox
-            width={36}
-            height={36}
-            color="#0000ff"
-            checked={true}
-            onClick={(color) => {}}
-          />
+          <EditFieldTitle title="住所録カラー変更" />
+          <Grid container sx={{ width: cbareaWidth }} columns={8}>
+            {this.colorlist.map((col) => (
+              <Grid item xs={1}>
+                <ColorBox
+                  width={cxBox}
+                  height={cyBox}
+                  color={col}
+                  checked={this.getCurrABColor() === col}
+                  onClick={this.handleSetColor}
+                />
+              </Grid>
+            ))}
+          </Grid>
         </DialogContent>
         <DialogActions>
           {buttons.map((button) => {

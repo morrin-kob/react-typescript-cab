@@ -382,7 +382,7 @@ export const UserContextProvider: React.FC<{ children: React.ReactNode }> = ({
         a_token: "",
         r_token: ""
       });
-      localStorage.setItem("user", "");
+      localStorage.setItem("user", JSON.stringify(user));
     }
   };
 

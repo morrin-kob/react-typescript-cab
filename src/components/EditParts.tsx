@@ -268,10 +268,11 @@ export const ColorBox = (props: colboxProps) => {
 
   return (
     <Box
+      onClick={(e) => props.onClick(props.color)}
       sx={{
         width: props.width,
         height: props.height,
-        backgroundColor: props.color,
+        backgroundColor: `#${props.color}`,
         "&:hover": {
           borderStyle: "solid",
           borderColor: "white",

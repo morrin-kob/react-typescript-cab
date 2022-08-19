@@ -941,7 +941,7 @@ const BlockTitle = (props: BlockTitleProps) => {
 const EditBlockOrg = (props: EditBlockProp) => {
   const [open, setOpen] = React.useState<boolean>(true);
 
-  const bgc = open ? "#c00000" : "gray";
+  const bgc = open ? "var(--col-offical)" : "gray";
   return (
     <>
       <BlockTitle title="勤務先" />
@@ -1080,7 +1080,11 @@ const EditBlockAddresses = (props: EditBlockProp) => {
               <Fab
                 size="small"
                 aria-label="add"
-                sx={{ ml: 9, color: "white", backgroundColor: "#c00000" }}
+                sx={{
+                  ml: 9,
+                  color: "white",
+                  backgroundColor: "var(--col-offical)"
+                }}
                 onClick={() => {
                   if (props.rec.addresses) {
                     delete props.rec.addresses[index];
@@ -1287,7 +1291,11 @@ const EditBlockTelephones = (props: EditBlockProp) => {
               <Fab
                 size="small"
                 aria-label="add"
-                sx={{ ml: 9, color: "white", backgroundColor: "#c00000" }}
+                sx={{
+                  ml: 9,
+                  color: "white",
+                  backgroundColor: "var(--col-offical)"
+                }}
                 onClick={() => {
                   if (props.rec.telephones) {
                     delete props.rec.telephones[index];
@@ -1408,7 +1416,11 @@ const EditBlockEMails = (props: EditBlockProp) => {
               <Fab
                 size="small"
                 aria-label="add"
-                sx={{ ml: 9, color: "white", backgroundColor: "#c00000" }}
+                sx={{
+                  ml: 9,
+                  color: "white",
+                  backgroundColor: "var(--col-offical)"
+                }}
                 onClick={() => {
                   if (props.rec.emails) {
                     delete props.rec.emails[index];
@@ -1524,7 +1536,11 @@ const EditBlockWebUrls = (props: EditBlockProp) => {
               <Fab
                 size="small"
                 aria-label="add"
-                sx={{ ml: 9, color: "white", backgroundColor: "#c00000" }}
+                sx={{
+                  ml: 9,
+                  color: "white",
+                  backgroundColor: "var(--col-offical)"
+                }}
                 onClick={() => {
                   if (props.rec.weburls) {
                     delete props.rec.weburls[index];
@@ -1784,7 +1800,11 @@ const EditBlockJointNames = (props: EditBlockProp) => {
               <Fab
                 size="small"
                 aria-label="add"
-                sx={{ ml: 9, color: "white", backgroundColor: "#c00000" }}
+                sx={{
+                  ml: 9,
+                  color: "white",
+                  backgroundColor: "var(--col-offical)"
+                }}
                 onClick={() => {
                   if (props.rec.joint_names) {
                     delete props.rec.joint_names[index];
