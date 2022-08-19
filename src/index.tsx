@@ -2,12 +2,18 @@ import * as React from "react";
 import { createRoot } from "react-dom/client";
 import "./App.css";
 import { RouterConfig } from "./RouterConfig";
+import { QueryClient, QueryClientProvider } from "react-query";
+
+const queryClient = new QueryClient();
 
 const container = document.getElementById("root");
 const root = createRoot(container);
+
 root.render(
   <React.StrictMode>
-    <RouterConfig />
+    <QueryClientProvider client={queryClient}>
+      <RouterConfig />
+    </QueryClientProvider>
   </React.StrictMode>
 );
 /*

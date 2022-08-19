@@ -6,11 +6,14 @@ import {
   AppVal,
   ajaxGet,
   ajaxPost,
+  fetchGet,
+  reformResponse,
   ContentsPropsType,
   getHomeAddressID,
   isHomeAddress
 } from "../AppSettings";
 import { useNavigate } from "react-router-dom";
+import { useQuery } from "react-query";
 
 import Box from "@mui/material/Box";
 import Drawer from "@mui/material/Drawer";
@@ -52,106 +55,77 @@ export type SBParamsType = {
 function CABBookList(props: {
   handleSetABook: (info: ContentsPropsType) => void;
 }) {
-  const [abooks, setABooks] = React.useState<ContentsPropsType[]>([]);
-  const [abook, setABook] = React.useState<ContentsPropsType>({
-    id: "",
-    name: "",
-    use: "private"
-  });
-  const [error, setError] = React.useState<string>("");
-
   const user = useContext(UserContext);
 
-  const fetchAddressBooks = () => {
-    let endpoint = `${user.getEpt()}/groups/list`;
+  const { isLoading, isFetching, isError, data, error } = useQuery(
+    "groups_list",
+    () => {
+      let endpoint = `${user.getEpt()}/groups/list`;
 
-    let params = {
-      atk: user.getAToken(),
-      ept: user.getEpm(),
-      uag: user.getUag()
-    };
-    ajaxGet(endpoint, params, (json) => {
-      console.log(JSON.stringify(json));
-      if ("statusCode" in json && parseInt(json["statusCode"], 10) === 401) {
-        user.RefreshAndRetry(endpoint, "GET", params, (json: {}) => {
-          if ("data" in json) {
-            setError("");
-            setABooks(json["data"]);
-          } else setError(json["error"] || json["message"] || "load error");
-        });
-      } else {
-        if ("data" in json) {
-          setError("");
-          setABooks(json["data"]);
-        } else
-          setError(
-            json["error"] ||
-              json["message"] ||
-              `load error:${JSON.stringify(json)}`
-          );
-      }
-    });
-  };
-
-  return (
-    <>
-      {(() => {
-        if (error.length) {
-          return (
-            <DialogContentText>
-              <WarningBlock message={error} />
-            </DialogContentText>
-          );
-        } else if (abooks.length === 0) {
-          fetchAddressBooks();
-          return (
-            <Box sx={{ width: "100%", mt: 20, textAlign: "center" }}>
-              <CircularProgress />
-            </Box>
-          );
-        } else {
-          return (
-            <List>
-              {abooks.map((info, index) => (
-                <>
-                  <MenuItem
-                    onClick={() => {
-                      let ab: ContentsPropsType = info;
-                      props.handleSetABook(ab);
-                    }}
-                    key={index}
-                    sx={{ height: 42 }}
-                    divider={true}
-                  >
-                    <Grid container columns={12}>
-                      <Grid container={true} item xs={11}>
-                        <SourceIcon sx={{ mr: 1 }} color="info" />
-                        {info.name}
-                      </Grid>
-                      <Grid item xs={1}>
-                        <Badge
-                          max={99999}
-                          sx={{ mb: 2 }}
-                          anchorOrigin={{
-                            vertical: "bottom",
-                            horizontal: "right"
-                          }}
-                          color="info"
-                          badgeContent={info["summary"].count}
-                        >
-                          &nbsp;
-                        </Badge>
-                      </Grid>
-                    </Grid>
-                  </MenuItem>
-                </>
-              ))}
-            </List>
-          );
-        }
-      })()}
-    </>
+      let params = {
+        atk: user.getAToken(),
+        ept: user.getEpm(),
+        uag: user.getUag()
+      };
+      return fetchGet(endpoint, params);
+    },
+    { staleTime: 3000, cacheTime: 1000000 }
   );
+
+  let cont = <></>;
+  if (isError) {
+    const load = reformResponse(error || "ロードエラーです");
+    let errormess = load["error"] || load["statusText"] || "ロードエラーです";
+    cont = (
+      <Box sx={{ width: "100%", mt: 20 }}>
+        <p>{errormess}</p>
+      </Box>
+    );
+  } else if (isLoading || isFetching) {
+    cont = (
+      <Box sx={{ width: "100%", mt: 20, textAlign: "center" }}>
+        <CircularProgress />
+      </Box>
+    );
+  } else if (data && "data" in data) {
+    cont = (
+      <List>
+        {data["data"].map((info: any, index: number) => (
+          <MenuItem
+            onClick={() => {
+              let ab: ContentsPropsType = info;
+              props.handleSetABook(ab);
+            }}
+            key={index}
+            sx={{ height: 42 }}
+            divider={true}
+          >
+            <Grid container columns={12}>
+              <Grid container={true} item xs={11}>
+                <SourceIcon sx={{ mr: 1 }} color="info" />
+                {info.name}
+              </Grid>
+              <Grid item xs={1}>
+                <Badge
+                  max={99999}
+                  sx={{ mb: 2 }}
+                  anchorOrigin={{
+                    vertical: "bottom",
+                    horizontal: "right"
+                  }}
+                  color="info"
+                  badgeContent={info["summary"].count}
+                >
+                  &nbsp;
+                </Badge>
+              </Grid>
+            </Grid>
+          </MenuItem>
+        ))}
+      </List>
+    );
+  }
+  return cont;
 }
 
 function CABSidebar(props: {
@@ -165,8 +139,6 @@ function CABSidebar(props: {
     bottom: false,
     right: false
   });
-
-  const [all, setAll] = React.useState(true);
 
   const [abook, setABook] = React.useState<ContentsPropsType>({
     id: props.params.abId,
@@ -190,9 +162,9 @@ function CABSidebar(props: {
       nav(`/ab/${abook.id}`);
       props.handlerHamberger({ ...abook });
     }
-  }, [all, abook]);
+  }, [abook]);
 
-  const toggleDrawer = (anchor, open) => (event) => {
+  const toggleDrawer = (anchor: string, open: boolean) => (event: any) => {
     if (
       event.type === "keydown" &&
       (event.key === "Tab" || event.key === "Shift")
@@ -231,7 +203,7 @@ function CABSidebar(props: {
       uag: user.getUag()
     };
     ajaxGet(endpoint, params, (json) => {
-      console.log(`get <group:>${JSON.stringify(json)}`);
+      //console.log(`get <group:>${JSON.stringify(json)}`);
       if ("statusCode" in json && parseInt(json["statusCode"], 10) === 401) {
         user.RefreshAndRetry(endpoint, "GET", params, (json: {}) => {
           if ("data" in json) {

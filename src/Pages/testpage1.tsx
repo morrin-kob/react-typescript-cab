@@ -11,15 +11,12 @@ export const Test1: React.FC = () => {
   else if (category === "") category = "empty";
 
   return (
-    <CABBaseLayout
-      loginable={true}
-      contents={
-        <>
-          <p>This is the test page #1.</p>
-          <p>Category = {category}</p>
-          <p>ID = {id}</p>
-        </>
-      }
-    />
+    <CABBaseLayout loginable={true}>
+      <>
+        <p>This is the test page #1.</p>
+        <p>Category = {category}</p>
+        <p>ID = {id}</p>
+      </>
+    </CABBaseLayout>
   );
 };

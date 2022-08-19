@@ -16,6 +16,7 @@ import EditIcon from "@mui/icons-material/Edit";
 import Tooltip from "@mui/material/Tooltip";
 import { SvgIcon } from "@mui/material";
 import { visuallyHidden } from "@mui/utils";
+import Divider from "@mui/material/Divider";
 
 function descendingComparator<T>(a: T, b: T, orderBy: keyof T) {
   if (b[orderBy] < a[orderBy]) {
@@ -44,12 +45,14 @@ function getComparator<Key extends keyof any>(
 export type CETColumnType = {
   id: string;
   label: string;
-  minWidth?: number;
-  maxWidth?: number;
+  sortable: boolean;
+  minWidth?: string;
+  maxWidth?: string;
   align?: "left" | "center" | "right";
   format?: (value: number) => string;
   disablePadding?: boolean;
   numeric?: boolean;
+  image?: boolean;
 };
 
 export type CheckTargetProps = {
@@ -92,7 +95,7 @@ function CheckableEditableTableHead(props: CheckableEditableTableHeaderProps) {
     <TableHead>
       <TableRow sx={{ backgroundColor: "#f0f0f0" }}>
         {/* チェックあり？ */}
-        {props.checkTarget ? (
+        {props.checkTarget && (
           <TableCell padding="checkbox" sx={{ backgroundColor: "#f0f0f0" }}>
             <Checkbox
               color="primary"
@@ -104,28 +107,40 @@ function CheckableEditableTableHead(props: CheckableEditableTableHeaderProps) {
               }}
             />
           </TableCell>
-        ) : null}
+        )}
         {props.columns.map((column) => (
-          <TableCell
-            sx={{ backgroundColor: "#f0f0f0" }}
-            key={column.id}
-            align={column.numeric ? "right" : "left"}
-            padding={column.disablePadding ? "none" : "normal"}
-            sortDirection={orderBy === column.id ? order : false}
-          >
-            <TableSortLabel
-              active={orderBy === column.id}
-              direction={orderBy === column.id ? order : "asc"}
-              onClick={createSortHandler(column.id)}
+          <>
+            <TableCell
+              sx={{ backgroundColor: "#f0f0f0" }}
+              key={column.id}
+              align={column.numeric ? "right" : "left"}
+              padding={column.disablePadding ? "none" : "normal"}
+              sortDirection={orderBy === column.id ? order : false}
             >
-              {column.label}
-              {orderBy === column.id ? (
-                <Box component="span" sx={visuallyHidden}>
-                  {order === "desc" ? "sorted descending" : "sorted ascending"}
-                </Box>
-              ) : null}
-            </TableSortLabel>
-          </TableCell>
+              {column.image || column.sortable === false ? (
+                <div style={{ marginRight: "1em" }}>{column.label}</div>
+              ) : (
+                <TableSortLabel
+                  active={orderBy === column.id}
+                  direction={orderBy === column.id ? order : "asc"}
+                  onClick={createSortHandler(column.id)}
+                >
+                  <div
+                    style={column.image ? {} : { minWidth: column.minWidth }}
+                  >
+                    {column.label}
+                  </div>
+                  {orderBy === column.id ? (
+                    <Box component="span" sx={visuallyHidden}>
+                      {order === "desc"
+                        ? "sorted descending"
+                        : "sorted ascending"}
+                    </Box>
+                  ) : null}
+                </TableSortLabel>
+              )}
+            </TableCell>
+          </>
         ))}
 
         {/* エディット可能？ */}
@@ -353,7 +368,7 @@ export default function CheckableEditableTable(
                   >
                     {/* ---------- チェックボックスアリ？ ----------- */}
                     {props.checkTarget ? (
-                      <TableCell padding="checkbox">
+                      <TableCell padding="checkbox" sx={{ maxWidth: "36px" }}>
                         <Checkbox
                           color="primary"
                           checked={isItemSelected}
@@ -370,6 +385,7 @@ export default function CheckableEditableTable(
                     {/* ----------- テーブルデータ ----------- */}
                     {props.columns.map((column) => (
                       <TableCell
+                        sx={{ maxWidth: column.maxWidth }}
                         align={column.align}
                         onClick={(event) =>
                           showDetailFunc(
@@ -378,7 +394,20 @@ export default function CheckableEditableTable(
                           )
                         }
                       >
-                        {row[column.id]}
+                        {column.image ? (
+                          <img
+                            src={row[column.id]}
+                            style={{
+                              width: column.minWidth,
+                              height: column.minWidth
+                            }}
+                            alt=""
+                          />
+                        ) : (
+                          <div style={{ minWidth: column.minWidth }}>
+                            {row[column.id]}
+                          </div>
+                        )}
                       </TableCell>
                     ))}
 

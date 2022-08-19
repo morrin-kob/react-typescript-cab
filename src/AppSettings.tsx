@@ -1,6 +1,7 @@
 // グローバル変数および定数
 // こんな風な管理はReact上OKなのか？
 //
+
 import { SvgIcon } from "@mui/material";
 
 const AppVal = {
@@ -49,23 +50,29 @@ type ContentsPropsType = {
   use: "private" | "corp";
   color?: string;
   icon?: string;
+  command?: "settings" | "import" | "export" | "share" | "delete";
   editing?: string; // record-id
 };
 
-function reformResponse(resp: {}) {
+function reformResponse(resp: any) {
   //resp.setEncoding("utf8");
   const data = {};
-  for (let key of Object.keys(resp)) {
-    let type = typeof resp[key];
-    if (
-      type === "number" ||
-      type === "string" ||
-      type === "boolean" ||
-      (type === "object" && key === "data")
-    ) {
-      data[key] = resp[key];
-    } else {
-      //console.log("*" + key + "*:type:" + type);
+
+  if (typeof resp === "string") {
+    data["message"] = resp;
+  } else {
+    for (let key of Object.keys(resp)) {
+      let type = typeof resp[key];
+      if (
+        type === "number" ||
+        type === "string" ||
+        type === "boolean" ||
+        (type === "object" && key === "data")
+      ) {
+        data[key] = resp[key];
+      } else {
+        //console.log("*" + key + "*:type:" + type);
+      }
     }
   }
 
@@ -140,6 +147,38 @@ const ajaxGet = (
     });
 };
 
+//
+// Promise返しの fetch のラップ関数
+//
+const fetchGet = async (endpoint: string, params: Object) => {
+  let url = endpoint;
+  let paramlist = "";
+  let headers = {};
+  if (params) {
+    for (const key of Object.keys(params)) {
+      if (key === "atk") {
+        headers["X-atk"] = params[key];
+      } else if (key === "ept") {
+        headers["X-ept"] = params[key];
+      } else {
+        if (paramlist.length) paramlist += "&";
+        paramlist += key + "=";
+        paramlist += params[key];
+      }
+    }
+    if (paramlist.length) {
+      url += `?${paramlist}`;
+    }
+  }
+
+  const response = await fetch(url, {
+    method: "GET",
+    mode: "cors",
+    headers: headers
+  });
+  return response.json();
+};
+
 const ajaxPost = (
   url: string,
   params: {},
@@ -163,7 +202,7 @@ const ajaxPost = (
   }
 
   const sendData = JSON.stringify(data);
-  console.log(`post: ${url}\ndata:${sendData}\nmethod:${method}`);
+  //console.log(`post: ${url}\ndata:${sendData}\nmethod:${method}`);
   fetch(url, {
     method: method,
     //  mode: "cors",
@@ -190,7 +229,9 @@ export {
   AppVal,
   ajaxGet,
   ajaxPost,
+  fetchGet,
   reformText,
+  reformResponse,
   ContentsPropsType,
   getHomeAddressID,
   isHomeAddress

@@ -6,6 +6,7 @@ import Dialog from "@mui/material/Dialog";
 import DialogTitle from "@mui/material/DialogTitle";
 import DialogActions from "@mui/material/DialogActions";
 import DialogContent from "@mui/material/DialogContent";
+import ButtonBase from "@mui/material/ButtonBase";
 import Button from "@mui/material/Button";
 import Box from "@mui/material/Box";
 import AddLocationAltOutlinedIcon from "@mui/icons-material/AddLocationAltOutlined";
@@ -18,17 +19,23 @@ import TableRow from "@mui/material/TableRow";
 import Grid from "@mui/material/Grid";
 import Paper from "@mui/material/Paper";
 import Divider from "@mui/material/Divider";
-import TextField from "@mui/material/TextField";
-import Select, { SelectChangeEvent } from "@mui/material/Select";
-import MenuItem from "@mui/material/MenuItem";
+import {
+  EditFieldTitle,
+  SquareIconButton,
+  FieldEditBox,
+  FieldTextArea,
+  FieldComboBox,
+  FieldDatePicker,
+  ReformField
+} from "../components/EditParts";
+
 import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown";
 import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
 import KeyboardArrowUpIcon from "@mui/icons-material/KeyboardArrowUp";
-import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
-import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns";
-import ja from "date-fns/locale/ja";
-import { MobileDatePicker } from "@mui/x-date-pickers/MobileDatePicker";
-import { useTheme } from "@mui/material/styles";
+import AddIcon from "@mui/icons-material/Add";
+import RemoveIcon from "@mui/icons-material/Remove";
+import Fab from "@mui/material/Fab";
+import ManageSearchIcon from "@mui/icons-material/ManageSearch";
 
 import {
   AppVal,
@@ -47,15 +54,15 @@ import { ThemeProvider, createTheme } from "@mui/material/styles";
 import type {} from "@mui/x-date-pickers/themeAugmentation";
 
 export type AddrBlock = {
-  kindof: "home" | "office" | null;
-  zipcode: string;
-  region: string;
-  city: string;
-  street: string;
-  building: string;
-  station: string;
+  kindof?: "home" | "office" | null;
+  zipcode?: string;
+  region?: string;
+  city?: string;
+  street?: string;
+  building?: string;
+  station?: string;
   label?: string;
-  geolocation: object;
+  geolocation?: object;
 };
 export type TelephoneBlock = {
   kindof: "tel" | "fax" | "cell" | "offtel" | "offfax" | "offcell" | null;
@@ -90,7 +97,7 @@ export type FamilyBlock = {
   firstkana: string;
   suffix?: string;
   gender?: string;
-  birthdate?: string;
+  birthdate?: string | null;
 };
 export type ExtendPropsBlock = {
   client_id: string;
@@ -411,6 +418,41 @@ const OutRecord = (rec: RecordType) => {
         return "";
       });
     }
+
+    // webUrl
+    if (rec.weburls && rec.weburls.length) {
+      let urlData = {};
+      let order: string[] = [];
+      rec.weburls.map((web) => {
+        // URL - 種別(プロフィール:profile/ブログ:blog/ホームページ:hp/会社:office/その他:null)
+        let title =
+          web.kindof === "profile"
+            ? "プロフィール"
+            : web.kindof === "blog"
+            ? "ブログ"
+            : web.kindof === "hp"
+            ? "ホームページ"
+            : web.kindof === "office"
+            ? "会社"
+            : web.label
+            ? `Eメール[${web.label}]`
+            : "Eメール[その他]";
+        if (urlData[title]) {
+          urlData[title].push(web.url);
+        } else {
+          order.push(title);
+          urlData[title] = [web.url];
+        }
+
+        return "";
+      });
+
+      order.map((title) => {
+        let weburls = urlData[title].join("\n");
+        rows.push(createData(title, weburls));
+        return "";
+      });
+    }
     // 写真
 
     // 最終更新
@@ -675,127 +717,11 @@ export default class ABRecDialog extends React.Component<
   }
 }
 
-const FieldTitle = (props: { title: string }) => {
-  return (
-    <h5 style={{ marginBottom: "2ex", marginTop: "2ex" }}>{props.title}</h5>
-  );
-};
-
-type FieldEditProps = {
-  label: string;
-  field: string;
-  rec: RecordType;
-  options?: string[];
-  onChangeField: (field: string, value: string) => void;
-};
-
-const FieldEditBox = (props: FieldEditProps) => {
-  return (
-    <Paper sx={{ width: "100%", mt: 1, mb: 0 }}>
-      <TextField
-        variant="outlined"
-        sx={{ width: "100%", mt: -0.24 }}
-        size="small"
-        placeholder={props.label}
-        value={props.rec[props.field]}
-        onChange={(e) => props.onChangeField(props.field, e.target.value)}
-      />
-    </Paper>
-  );
-};
-
-const FieldTextArea = (props: FieldEditProps) => {
-  return (
-    <Paper sx={{ width: "100%", mt: 1, mb: 0 }}>
-      <TextField
-        variant="outlined"
-        sx={{ width: "100%", mt: -0.24 }}
-        multiline
-        rows={3}
-        placeholder={props.label}
-        value={props.rec[props.field]}
-        onChange={(e) => props.onChangeField(props.field, e.target.value)}
-      />
-    </Paper>
-  );
-};
-
-const FieldComboBox = (props: FieldEditProps) => {
-  return (
-    <Paper sx={{ width: "100%", mt: 1, mb: 0 }}>
-      <Select
-        variant="outlined"
-        sx={{ width: "100%", mt: -0.24 }}
-        size="small"
-        value={props.rec[props.field]}
-        onChange={(e) => props.onChangeField(props.field, e.target.value)}
-        displayEmpty
-        inputProps={{ "aria-label": "Without label" }}
-      >
-        <MenuItem value="">&nbsp;</MenuItem>
-        {props.options &&
-          props.options.map((option) => (
-            <MenuItem value={option}>{option}</MenuItem>
-          ))}
-      </Select>
-    </Paper>
-  );
-};
-// sx={{ width: "100%", mt: 1, mb: 0, backgroundColor: "white" }}
-// size="small"
-
-const FieldDatePicker = (props: FieldEditProps) => {
-  const baseTheme = useTheme();
-  const theme = createTheme(
-    { ...baseTheme },
-    {
-      components: {
-        MuiDatePicker: {
-          styleOverrides: {
-            root: {
-              backgroundColor: "red"
-            }
-          }
-        }
-      }
-    }
-  );
-
-  const FullWidth = {
-    display: "flex",
-    "flex-direction": "column",
-    width: "100%"
-  };
-  return (
-    <LocalizationProvider dateAdapter={AdapterDateFns} adapterLocale={ja}>
-      <Paper>
-        <div style={FullWidth}>
-          <ThemeProvider theme={theme}>
-            <MobileDatePicker
-              className="datepicker"
-              leftArrowButtonText="前月"
-              rightArrowButtonText="翌月"
-              label={props.label}
-              inputFormat="yyyy年MM月dd日"
-              mask="____年__月__日"
-              toolbarFormat="yyyy年MM月"
-              value={props.rec[props.field]}
-              onChange={(newValue: Date | null) =>
-                props.onChangeField(props.field, `${newValue || ""}`)
-              }
-              renderInput={(params) => <TextField {...params} />}
-            />
-          </ThemeProvider>
-        </div>
-      </Paper>
-    </LocalizationProvider>
-  );
-};
-
 type EditBlockProp = {
   abid: string;
   rec: RecordType;
   onChangeField: (field: string, value: string) => void;
+  onChangeData?: (rec: {}) => void;
 };
 
 const PictWidth = 128;
@@ -817,7 +743,7 @@ const EditBlockName = (props: EditBlockProp) => {
           <Grid container={true} columns={15}>
             {/* ------ 氏名の行 ------ */}
             <Grid item={true} xs={3} sx={{ pl: 2 }}>
-              <FieldTitle title="氏名" />
+              <EditFieldTitle title="氏名" />
             </Grid>
             <Grid item={true} xs={4} sx={{ px: 1 }}>
               <FieldEditBox
@@ -840,24 +766,25 @@ const EditBlockName = (props: EditBlockProp) => {
                 rec={props.rec}
                 label="敬称"
                 field="suffix"
+                editable={true}
                 options={[
-                  "様",
-                  "殿",
-                  "御中",
-                  "行",
-                  "宛",
-                  "先生",
-                  "君",
-                  "くん",
-                  "さん",
-                  "ちゃん"
+                  { data: "様" },
+                  { data: "殿" },
+                  { data: "御中" },
+                  { data: "行" },
+                  { data: "宛" },
+                  { data: "先生" },
+                  { data: "君" },
+                  { data: "くん" },
+                  { data: "さん" },
+                  { data: "ちゃん" }
                 ]}
                 onChangeField={props.onChangeField}
               />
             </Grid>
             {/* ------ フリガナの行 ------ */}
             <Grid item={true} xs={3} sx={{ pl: 2 }}>
-              <FieldTitle title="フリガナ" />
+              <EditFieldTitle title="フリガナ" />
             </Grid>
             <Grid item={true} xs={4} sx={{ px: 1 }}>
               <FieldEditBox
@@ -883,7 +810,7 @@ const EditBlockName = (props: EditBlockProp) => {
 
             {/* ------ タグの行 ------ */}
             <Grid item={true} xs={3} sx={{ pl: 2 }}>
-              <FieldTitle title="タグ" />
+              <EditFieldTitle title="タグ" />
             </Grid>
             <Grid item={true} xs={10} sx={{ px: 1 }}>
               <FieldEditBox
@@ -893,14 +820,17 @@ const EditBlockName = (props: EditBlockProp) => {
                 onChangeField={props.onChangeField}
               />
             </Grid>
-            <Grid item={true} xs={2} sx={{ px: 1, mt: 1 }}>
-              <Button
-                onClick={() => {
+            <Grid item={true} xs={2} sx={{ px: 2, mt: 0 }}>
+              <SquareIconButton
+                id=""
+                variant="contained"
+                bgcolor="gray"
+                onClick={(id) => {
                   setDetail(!detail);
                 }}
               >
                 {!detail ? <KeyboardArrowDownIcon /> : <KeyboardArrowUpIcon />}
-              </Button>
+              </SquareIconButton>
             </Grid>
 
             {/* ------ 詳細の始まり ------ */}
@@ -908,7 +838,7 @@ const EditBlockName = (props: EditBlockProp) => {
               <>
                 {/* ------ 誕生日＆性別　の行 ------ */}
                 <Grid item={true} xs={3} sx={{ pl: 2 }}>
-                  <FieldTitle title="誕生日" />
+                  <EditFieldTitle title="誕生日" />
                 </Grid>
                 <Grid item={true} xs={5} sx={{ px: 1 }}>
                   <FieldDatePicker
@@ -919,21 +849,26 @@ const EditBlockName = (props: EditBlockProp) => {
                   />
                 </Grid>
                 <Grid item={true} xs={2} sx={{ pl: 2 }}>
-                  <FieldTitle title="性別" />
+                  <EditFieldTitle title="性別" />
                 </Grid>
                 <Grid item={true} xs={4} sx={{ px: 1 }}>
                   <FieldComboBox
                     rec={props.rec}
                     label="性別"
                     field="gender"
-                    options={["男性", "女性", "その他"]}
+                    editable={false}
+                    options={[
+                      { data: "男性" },
+                      { data: "女性" },
+                      { data: "その他" }
+                    ]}
                     onChangeField={props.onChangeField}
                   />
                 </Grid>
 
                 {/* ------ 顧客コードの行 ------ */}
                 <Grid item={true} xs={3} sx={{ pl: 2 }}>
-                  <FieldTitle title="顧客コード" />
+                  <EditFieldTitle title="顧客コード" />
                 </Grid>
                 <Grid item={true} xs={5} sx={{ px: 1 }}>
                   <FieldEditBox
@@ -947,7 +882,7 @@ const EditBlockName = (props: EditBlockProp) => {
 
                 {/* ------ メモの行 ------ */}
                 <Grid item={true} xs={3} sx={{ pl: 2 }}>
-                  <FieldTitle title="メモ" />
+                  <EditFieldTitle title="メモ" />
                 </Grid>
                 {/* FieldTextArea */}
                 <Grid item={true} xs={8} sx={{ px: 1 }}>
@@ -980,6 +915,927 @@ const EditBlockName = (props: EditBlockProp) => {
     </Grid>
   );
 };
+
+type BlockTitleProps = {
+  title: string;
+};
+
+const BlockTitle = (props: BlockTitleProps) => {
+  return (
+    <p
+      style={{
+        margin: "6pt 0 0 2pt",
+        fontSize: "150%",
+        color: "gray",
+        backgroundColor: "white"
+      }}
+    >
+      {props.title}
+    </p>
+  );
+};
+
+// ----------------------------------------------------------------
+// 勤務先ブロック
+
+const EditBlockOrg = (props: EditBlockProp) => {
+  const [open, setOpen] = React.useState<boolean>(true);
+
+  const bgc = open ? "#c00000" : "gray";
+  return (
+    <>
+      <BlockTitle title="勤務先" />
+
+      <Grid container>
+        <Grid item sx={{ width: `${PictWidth}px` }}>
+          <Fab
+            size="small"
+            aria-label="add"
+            sx={{ ml: 9, color: "white", backgroundColor: `${bgc}` }}
+            onClick={() => {
+              setOpen(!open);
+            }}
+          >
+            {open ? <RemoveIcon /> : <KeyboardArrowDownIcon />}
+          </Fab>
+        </Grid>
+
+        {open && (
+          <Grid item sx={{ width: `calc( 100% - ${PictAreaWidth}px )` }}>
+            <Paper
+              component="form"
+              sx={{
+                backgroundColor: "#f0f0f0"
+              }}
+            >
+              <Grid container={true} columns={15}>
+                <Grid item xs={3} sx={{ pl: 2 }}>
+                  <EditFieldTitle title="勤務先名" />
+                </Grid>
+                <Grid item xs={10}>
+                  <FieldEditBox
+                    rec={props.rec}
+                    label="勤務先"
+                    field="organization.name"
+                    onChangeField={props.onChangeField}
+                  />
+                </Grid>
+                <Grid item xs={2}></Grid>
+
+                <Grid item xs={3} sx={{ pl: 2 }}>
+                  <EditFieldTitle title="フリガナ" />
+                </Grid>
+                <Grid item xs={10}>
+                  <FieldEditBox
+                    rec={props.rec}
+                    label="フリガナ"
+                    field="organization.kana"
+                    onChangeField={props.onChangeField}
+                  />
+                </Grid>
+                <Grid item xs={2}></Grid>
+
+                <Grid item xs={15}>
+                  <Divider />
+                </Grid>
+
+                <Grid item xs={3} sx={{ pl: 2 }}>
+                  <EditFieldTitle title="部署名" />
+                </Grid>
+                <Grid item xs={5} sx={{ pr: 0.5 }}>
+                  <FieldEditBox
+                    rec={props.rec}
+                    label="部署名1"
+                    field="organization.dept1"
+                    onChangeField={props.onChangeField}
+                  />
+                </Grid>
+                <Grid item xs={5} sx={{ pl: 0.5 }}>
+                  <FieldEditBox
+                    rec={props.rec}
+                    label="部署名2"
+                    field="organization.dept2"
+                    onChangeField={props.onChangeField}
+                  />
+                </Grid>
+                <Grid item xs={2}></Grid>
+
+                <Grid item xs={3} sx={{ pl: 2 }}>
+                  <EditFieldTitle title="役職" />
+                </Grid>
+                <Grid item xs={7}>
+                  <FieldEditBox
+                    rec={props.rec}
+                    label="役職"
+                    field="organization.title"
+                    onChangeField={props.onChangeField}
+                  />
+                </Grid>
+                <Grid item xs={5}></Grid>
+              </Grid>
+            </Paper>
+          </Grid>
+        )}
+      </Grid>
+    </>
+  );
+};
+// ----------------------------------------------------------------
+// 住所ブロック
+
+const EditBlockAddresses = (props: EditBlockProp) => {
+  const [count, setCount] = React.useState<number>(
+    props.rec.addresses ? props.rec.addresses.length : 0
+  );
+
+  const initialData: AddrBlock = {
+    kindof: "home",
+    zipcode: "",
+    region: "",
+    city: "",
+    street: "",
+    building: ""
+  };
+
+  if (props.rec.addresses) {
+    if (!Array.isArray(props.rec.addresses)) {
+      props.rec.addresses = [{ ...initialData }];
+    }
+    //console.log(`addresses:${JSON.stringify(props.rec.addresses)}`);
+    if (props.rec.addresses[0] === null) {
+      props.rec.addresses[0] = { ...initialData };
+    }
+  } else {
+    props.rec.addresses = [{ ...initialData }];
+  }
+
+  return (
+    <>
+      <BlockTitle title="住所" />
+
+      {props.rec.addresses &&
+        props.rec.addresses.map((addr, index) => (
+          <Grid container>
+            <Grid item sx={{ width: `${PictWidth}px` }}>
+              <Fab
+                size="small"
+                aria-label="add"
+                sx={{ ml: 9, color: "white", backgroundColor: "#c00000" }}
+                onClick={() => {
+                  if (props.rec.addresses) {
+                    delete props.rec.addresses[index];
+                    if (props.onChangeData) props.onChangeData(props.rec);
+                  }
+                  setCount(
+                    props.rec.addresses ? props.rec.addresses.length : 0
+                  );
+                }}
+              >
+                <RemoveIcon />
+              </Fab>
+            </Grid>
+
+            <Grid item sx={{ width: `calc( 100% - ${PictAreaWidth}px )` }}>
+              <Paper
+                component="form"
+                sx={{
+                  backgroundColor: "#f0f0f0"
+                }}
+              >
+                <Grid container={true} columns={15}>
+                  {/* ------ 分類の行 ------ */}
+                  <Grid item xs={5} sx={{ pl: 2 }}>
+                    <FieldComboBox
+                      rec={props.rec}
+                      label="分類"
+                      editable={true}
+                      options={[
+                        { label: "自宅", data: "home" },
+                        { label: "会社", data: "office" }
+                      ]}
+                      field={`addresses[${index}].kindof`}
+                      fieldOnEdit={`addresses[${index}].label`}
+                      onChangeField={props.onChangeField}
+                    />
+                  </Grid>
+                  <Grid item xs={10}></Grid>
+
+                  {/* ------ 郵便番号の行 ------ */}
+
+                  <Grid item xs={3} sx={{ pl: 2 }}>
+                    <EditFieldTitle title="郵便番号" />
+                  </Grid>
+
+                  <Grid item xs={5}>
+                    <FieldEditBox
+                      rec={props.rec}
+                      label="郵便番号"
+                      field={`addresses[${index}].zipcode`}
+                      onChangeField={props.onChangeField}
+                    />
+                  </Grid>
+                  <Grid item xs={1}>
+                    <SquareIconButton
+                      id={`addresses[${index}].zipcode`}
+                      variant="outlined"
+                      bgcolor="white"
+                      onClick={(id) => {
+                        let rp = ReformField(
+                          props.rec,
+                          `addresses[${index}].zipcode`
+                        );
+                        alert(`〒変換:${rp.rec[rp.field]}`);
+                      }}
+                    >
+                      <ManageSearchIcon />
+                    </SquareIconButton>
+                  </Grid>
+                  <Grid item xs={6}></Grid>
+
+                  <Grid item xs={15}>
+                    <Divider />
+                  </Grid>
+
+                  {/* ------ 住所の行 ------ */}
+                  <Grid item xs={3} sx={{ pl: 2 }}>
+                    <EditFieldTitle title="住所" />
+                  </Grid>
+                  <Grid item xs={3} sx={{ pr: 0.5 }}>
+                    <FieldEditBox
+                      rec={props.rec}
+                      label="都道府県"
+                      field={`addresses[${index}].region`}
+                      onChangeField={props.onChangeField}
+                    />
+                  </Grid>
+                  <Grid item xs={3} sx={{ pl: 0.5 }}>
+                    <FieldEditBox
+                      rec={props.rec}
+                      label="市区町村"
+                      field={`addresses[${index}].city`}
+                      onChangeField={props.onChangeField}
+                    />
+                  </Grid>
+                  <Grid item xs={6} sx={{ pl: 0.5 }}>
+                    <FieldEditBox
+                      rec={props.rec}
+                      label="地名番地"
+                      field={`addresses[${index}].street`}
+                      onChangeField={props.onChangeField}
+                    />
+                  </Grid>
+
+                  {/* ------ ビル名の行 ------ */}
+
+                  <Grid item xs={3} sx={{ pl: 2 }}>
+                    <EditFieldTitle title="ビル名" />
+                  </Grid>
+                  <Grid item xs={7} sx={{ pl: 0.5 }}>
+                    <FieldEditBox
+                      rec={props.rec}
+                      label="ビル名"
+                      field={`addresses[${index}].building`}
+                      onChangeField={props.onChangeField}
+                    />
+                  </Grid>
+
+                  <Grid item xs={15}>
+                    <Divider />
+                  </Grid>
+
+                  {/* ------ 最寄り駅の行 ------ */}
+
+                  <Grid item xs={3} sx={{ pl: 2 }}>
+                    <EditFieldTitle title="最寄り駅" />
+                  </Grid>
+
+                  <Grid item xs={7} sx={{ pl: 0.5 }}>
+                    <FieldEditBox
+                      rec={props.rec}
+                      label="最寄り駅"
+                      field={`addresses[${index}].station`}
+                      onChangeField={props.onChangeField}
+                    />
+                  </Grid>
+                  <Grid item xs={6}></Grid>
+                </Grid>
+              </Paper>
+            </Grid>
+            <Grid item xs={15}>
+              &nbsp;
+            </Grid>
+          </Grid>
+        ))}
+      <Grid container>
+        <Grid item sx={{ width: `${PictWidth}px` }}>
+          <Fab
+            size="small"
+            aria-label="add"
+            sx={{ ml: 9, color: "white", backgroundColor: "gray" }}
+            onClick={() => {
+              if (!props.rec.addresses)
+                props.rec["addresses"] = [{ ...initialData }];
+              else {
+                props.rec.addresses.push({ ...initialData });
+              }
+              if (props.onChangeData) props.onChangeData(props.rec);
+              setCount(count + 1);
+            }}
+          >
+            <AddIcon />
+          </Fab>
+        </Grid>
+      </Grid>
+    </>
+  );
+};
+
+// ----------------------------------------------------------------
+// TELブロック
+
+const EditBlockTelephones = (props: EditBlockProp) => {
+  const [count, setCount] = React.useState<number>(
+    props.rec.telephones ? props.rec.telephones.length : 0
+  );
+
+  const initialData: TelephoneBlock = {
+    kindof: "cell",
+    number: "",
+    label: ""
+  };
+
+  if (props.rec.telephones) {
+    if (!Array.isArray(props.rec.telephones)) {
+      props.rec.telephones = [{ ...initialData }];
+    }
+    //console.log(`telephones:${JSON.stringify(props.rec.telephones)}`);
+    if (props.rec.telephones[0] === null) {
+      props.rec.telephones[0] = { ...initialData };
+    }
+  } else {
+    props.rec.telephones = [{ ...initialData }];
+  }
+
+  return (
+    <>
+      <BlockTitle title="電話番号" />
+
+      {props.rec.telephones &&
+        props.rec.telephones.map((addr, index) => (
+          <Grid container>
+            <Grid item sx={{ width: `${PictWidth}px` }}>
+              <Fab
+                size="small"
+                aria-label="add"
+                sx={{ ml: 9, color: "white", backgroundColor: "#c00000" }}
+                onClick={() => {
+                  if (props.rec.telephones) {
+                    delete props.rec.telephones[index];
+                    if (props.onChangeData) props.onChangeData(props.rec);
+                  }
+                  setCount(
+                    props.rec.telephones ? props.rec.telephones.length : 0
+                  );
+                }}
+              >
+                <RemoveIcon />
+              </Fab>
+            </Grid>
+
+            <Grid item sx={{ width: `calc( 100% - ${PictAreaWidth}px )` }}>
+              <Paper
+                component="form"
+                sx={{
+                  backgroundColor: "#f0f0f0",
+                  pb: 1
+                }}
+              >
+                <Grid container={true} columns={15}>
+                  {/* ------ 分類／電話番号 ------ */}
+                  <Grid item xs={5} sx={{ pl: 2 }}>
+                    <FieldComboBox
+                      rec={props.rec}
+                      label="分類"
+                      editable={true}
+                      options={[
+                        { data: "tel", label: "自宅TEL" },
+                        { data: "fax", label: "自宅FAX" },
+                        { data: "cell", label: "個人携帯" },
+                        { data: "offtel", label: "会社TEL" },
+                        { data: "offfax", label: "会社FAX" },
+                        { data: "offcell", label: "会社携帯" }
+                      ]}
+                      field={`telephones[${index}].kindof`}
+                      fieldOnEdit={`telephones[${index}].label`}
+                      onChangeField={props.onChangeField}
+                    />
+                  </Grid>
+                  <Grid item xs={1}></Grid>
+
+                  <Grid item xs={6}>
+                    <FieldEditBox
+                      rec={props.rec}
+                      label="電話番号"
+                      field={`telephones[${index}].number`}
+                      onChangeField={props.onChangeField}
+                    />
+                  </Grid>
+                </Grid>
+              </Paper>
+            </Grid>
+            <Grid item xs={15}>
+              &nbsp;
+            </Grid>
+          </Grid>
+        ))}
+      <Grid container>
+        <Grid item sx={{ width: `${PictWidth}px` }}>
+          <Fab
+            size="small"
+            aria-label="add"
+            sx={{ ml: 9, color: "white", backgroundColor: "gray" }}
+            onClick={() => {
+              if (!props.rec.telephones)
+                props.rec["telephones"] = [{ ...initialData }];
+              else {
+                props.rec.telephones.push({ ...initialData });
+              }
+              if (props.onChangeData) props.onChangeData(props.rec);
+              setCount(count + 1);
+            }}
+          >
+            <AddIcon />
+          </Fab>
+        </Grid>
+      </Grid>
+    </>
+  );
+};
+// ----------------------------------------------------------------
+// e-mailブロック
+
+const EditBlockEMails = (props: EditBlockProp) => {
+  const [count, setCount] = React.useState<number>(
+    props.rec.emails ? props.rec.emails.length : 0
+  );
+
+  const initialData: EmailBlock = {
+    kindof: "cell",
+    address: "",
+    label: ""
+  };
+
+  if (props.rec.emails) {
+    if (!Array.isArray(props.rec.emails)) {
+      props.rec.emails = [{ ...initialData }];
+    }
+    //console.log(`emails:${JSON.stringify(props.rec.emails)}`);
+    if (props.rec.emails[0] === null) {
+      props.rec.emails[0] = { ...initialData };
+    }
+  } else {
+    props.rec.emails = [{ ...initialData }];
+  }
+
+  return (
+    <>
+      <BlockTitle title="メールアドレス" />
+
+      {props.rec.emails &&
+        props.rec.emails.map((addr, index) => (
+          <Grid container>
+            <Grid item sx={{ width: `${PictWidth}px` }}>
+              <Fab
+                size="small"
+                aria-label="add"
+                sx={{ ml: 9, color: "white", backgroundColor: "#c00000" }}
+                onClick={() => {
+                  if (props.rec.emails) {
+                    delete props.rec.emails[index];
+                    if (props.onChangeData) props.onChangeData(props.rec);
+                  }
+                  setCount(props.rec.emails ? props.rec.emails.length : 0);
+                }}
+              >
+                <RemoveIcon />
+              </Fab>
+            </Grid>
+
+            <Grid item sx={{ width: `calc( 100% - ${PictAreaWidth}px )` }}>
+              <Paper
+                component="form"
+                sx={{
+                  backgroundColor: "#f0f0f0",
+                  pb: 1
+                }}
+              >
+                <Grid container={true} columns={15}>
+                  {/* ------ 分類／メールアドレス ------ */}
+                  <Grid item xs={5} sx={{ pl: 2 }}>
+                    <FieldComboBox
+                      rec={props.rec}
+                      label="分類"
+                      editable={true}
+                      options={[
+                        { data: "home", label: "Eメール[自宅]" },
+                        { data: "cell", label: "Eメール[携帯]" },
+                        { data: "office", label: "Eメール[会社]" }
+                      ]}
+                      field={`emails[${index}].kindof`}
+                      fieldOnEdit={`emails[${index}].label`}
+                      onChangeField={props.onChangeField}
+                    />
+                  </Grid>
+                  <Grid item xs={1}></Grid>
+
+                  <Grid item xs={6}>
+                    <FieldEditBox
+                      rec={props.rec}
+                      label="メールアドレス"
+                      field={`emails[${index}].number`}
+                      onChangeField={props.onChangeField}
+                    />
+                  </Grid>
+                </Grid>
+              </Paper>
+            </Grid>
+            <Grid item xs={15}>
+              &nbsp;
+            </Grid>
+          </Grid>
+        ))}
+      <Grid container>
+        <Grid item sx={{ width: `${PictWidth}px` }}>
+          <Fab
+            size="small"
+            aria-label="add"
+            sx={{ ml: 9, color: "white", backgroundColor: "gray" }}
+            onClick={() => {
+              if (!props.rec.emails) props.rec["emails"] = [{ ...initialData }];
+              else {
+                props.rec.emails.push({ ...initialData });
+              }
+              if (props.onChangeData) props.onChangeData(props.rec);
+              setCount(count + 1);
+            }}
+          >
+            <AddIcon />
+          </Fab>
+        </Grid>
+      </Grid>
+    </>
+  );
+};
+
+// ----------------------------------------------------------------
+// webUrlブロック
+
+const EditBlockWebUrls = (props: EditBlockProp) => {
+  const [count, setCount] = React.useState<number>(
+    props.rec.weburls ? props.rec.weburls.length : 0
+  );
+
+  const initialData: WebUrlBlock = {
+    kindof: "profile",
+    url: "",
+    label: ""
+  };
+
+  if (props.rec.weburls) {
+    if (!Array.isArray(props.rec.weburls)) {
+      props.rec.weburls = [{ ...initialData }];
+    }
+    //console.log(`weburls:${JSON.stringify(props.rec.weburls)}`);
+    if (props.rec.weburls[0] === null) {
+      props.rec.weburls[0] = { ...initialData };
+    }
+  } else {
+    props.rec.weburls = [{ ...initialData }];
+  }
+
+  return (
+    <>
+      <BlockTitle title="Webサイト" />
+
+      {props.rec.weburls &&
+        props.rec.weburls.map((addr, index) => (
+          <Grid container>
+            <Grid item sx={{ width: `${PictWidth}px` }}>
+              <Fab
+                size="small"
+                aria-label="add"
+                sx={{ ml: 9, color: "white", backgroundColor: "#c00000" }}
+                onClick={() => {
+                  if (props.rec.weburls) {
+                    delete props.rec.weburls[index];
+                    if (props.onChangeData) props.onChangeData(props.rec);
+                  }
+                  setCount(props.rec.weburls ? props.rec.weburls.length : 0);
+                }}
+              >
+                <RemoveIcon />
+              </Fab>
+            </Grid>
+
+            <Grid item sx={{ width: `calc( 100% - ${PictAreaWidth}px )` }}>
+              <Paper
+                component="form"
+                sx={{
+                  backgroundColor: "#f0f0f0",
+                  pb: 1
+                }}
+              >
+                <Grid container={true} columns={15}>
+                  {/* ------ 分類／メールアドレス ------ */}
+                  <Grid item xs={5} sx={{ pl: 2 }}>
+                    <FieldComboBox
+                      rec={props.rec}
+                      label="分類"
+                      editable={true}
+                      options={[
+                        { data: "profile", label: "プロフィール" },
+                        { data: "blog", label: "ブログ" },
+                        { data: "hp", label: "ホームページ" },
+                        { data: "office", label: "会社" }
+                      ]}
+                      field={`weburls[${index}].kindof`}
+                      fieldOnEdit={`weburls[${index}].label`}
+                      onChangeField={props.onChangeField}
+                    />
+                  </Grid>
+                  <Grid item xs={1}></Grid>
+
+                  <Grid item xs={6}>
+                    <FieldEditBox
+                      rec={props.rec}
+                      label="URL"
+                      field={`weburls[${index}].number`}
+                      onChangeField={props.onChangeField}
+                    />
+                  </Grid>
+                </Grid>
+              </Paper>
+            </Grid>
+            <Grid item xs={15}>
+              &nbsp;
+            </Grid>
+          </Grid>
+        ))}
+      <Grid container>
+        <Grid item sx={{ width: `${PictWidth}px` }}>
+          <Fab
+            size="small"
+            aria-label="add"
+            sx={{ ml: 9, color: "white", backgroundColor: "gray" }}
+            onClick={() => {
+              if (!props.rec.weburls)
+                props.rec["weburls"] = [{ ...initialData }];
+              else {
+                props.rec.weburls.push({ ...initialData });
+              }
+              if (props.onChangeData) props.onChangeData(props.rec);
+              setCount(count + 1);
+            }}
+          >
+            <AddIcon />
+          </Fab>
+        </Grid>
+      </Grid>
+    </>
+  );
+};
+
+// 連名１つのブロック　fieldには joint_names[<index>] を指定
+interface OneRenmeiProps extends EditBlockProp {
+  index: number;
+}
+const EditBlockOneJointName = (props: OneRenmeiProps) => {
+  const [detail, setDetail] = React.useState<boolean>(false);
+
+  return (
+    <Grid container>
+      <Paper
+        component="form"
+        sx={{
+          backgroundColor: "#f0f0f0"
+        }}
+      >
+        <Grid container={true} columns={16}>
+          {/* ------ 氏名の行 ------ */}
+          <Grid item={true} xs={3} sx={{ pl: 2 }}>
+            <EditFieldTitle title="氏名" />
+          </Grid>
+          <Grid item={true} xs={4} sx={{ px: 1 }}>
+            <FieldEditBox
+              rec={props.rec}
+              label="姓"
+              field={`joint_names[${props.index}].lastname`}
+              onChangeField={props.onChangeField}
+            />
+          </Grid>
+          <Grid item={true} xs={4} sx={{ px: 1 }}>
+            <FieldEditBox
+              rec={props.rec}
+              label="名"
+              field={`joint_names[${props.index}].firstname`}
+              onChangeField={props.onChangeField}
+            />
+          </Grid>
+          <Grid item={true} xs={4} sx={{ px: 1 }}>
+            <FieldComboBox
+              rec={props.rec}
+              label="敬称"
+              field={`joint_names[${props.index}].suffix`}
+              editable={true}
+              options={[
+                { data: "様" },
+                { data: "殿" },
+                { data: "御中" },
+                { data: "行" },
+                { data: "宛" },
+                { data: "先生" },
+                { data: "君" },
+                { data: "くん" },
+                { data: "さん" },
+                { data: "ちゃん" }
+              ]}
+              onChangeField={props.onChangeField}
+            />
+          </Grid>
+          <Grid item={true} xs={1} sx={{ px: 1, mt: 0 }}>
+            <SquareIconButton
+              id=""
+              variant="contained"
+              bgcolor="gray"
+              onClick={(id) => {
+                setDetail(!detail);
+              }}
+            >
+              {!detail ? <KeyboardArrowDownIcon /> : <KeyboardArrowUpIcon />}
+            </SquareIconButton>
+          </Grid>
+
+          {/* ------ フリガナの行 ------ */}
+          <Grid item={true} xs={3} sx={{ pl: 2 }}>
+            <EditFieldTitle title="フリガナ" />
+          </Grid>
+          <Grid item={true} xs={4} sx={{ px: 1 }}>
+            <FieldEditBox
+              rec={props.rec}
+              label="姓フリガナ"
+              field={`joint_names[${props.index}].lastkana`}
+              onChangeField={props.onChangeField}
+            />
+          </Grid>
+          <Grid item={true} xs={4} sx={{ px: 1 }}>
+            <FieldEditBox
+              rec={props.rec}
+              label="名フリガナ"
+              field={`joint_names[${props.index}].firstkana`}
+              onChangeField={props.onChangeField}
+            />
+          </Grid>
+          <Grid item={true} xs={5} sx={{ px: 1 }}></Grid>
+
+          <Grid item={true} xs={16} sx={{ px: 1 }}>
+            <Divider />
+          </Grid>
+
+          {/* ------ 詳細の始まり ------ */}
+          {detail && (
+            <>
+              {/* ------ 誕生日＆性別　の行 ------ */}
+              <Grid item={true} xs={3} sx={{ pl: 2 }}>
+                <EditFieldTitle title="誕生日" />
+              </Grid>
+              <Grid item={true} xs={5} sx={{ px: 1 }}>
+                <FieldDatePicker
+                  rec={props.rec}
+                  label="誕生日"
+                  field={`joint_names[${props.index}].birthdate`}
+                  onChangeField={props.onChangeField}
+                />
+              </Grid>
+              <Grid item={true} xs={3} sx={{ pl: 2 }}>
+                <EditFieldTitle title="性別" />
+              </Grid>
+              <Grid item={true} xs={4} sx={{ px: 1 }}>
+                <FieldComboBox
+                  rec={props.rec}
+                  label="性別"
+                  field={`joint_names[${props.index}].gender`}
+                  editable={false}
+                  options={[
+                    { data: "男性" },
+                    { data: "女性" },
+                    { data: "その他" }
+                  ]}
+                  onChangeField={props.onChangeField}
+                />
+              </Grid>
+
+              <Grid item={true} xs={15} sx={{ px: 1 }}>
+                &nbsp;
+              </Grid>
+            </>
+          )}
+        </Grid>
+      </Paper>
+    </Grid>
+  );
+};
+
+// ----------------------------------------------------------------
+// 連名ブロック
+
+const EditBlockJointNames = (props: EditBlockProp) => {
+  const [count, setCount] = React.useState<number>(
+    props.rec.joint_names ? props.rec.joint_names.length : 0
+  );
+
+  const initialData: FamilyBlock = {
+    lastname: "",
+    firstname: "",
+    lastkana: "",
+    firstkana: "",
+    birthdate: null
+  };
+
+  if (props.rec.joint_names) {
+    if (!Array.isArray(props.rec.joint_names)) {
+      props.rec.joint_names = [{ ...initialData }];
+    }
+    //console.log(`joint_names:${JSON.stringify(props.rec.joint_names)}`);
+    if (props.rec.joint_names[0] === null) {
+      props.rec.joint_names[0] = { ...initialData };
+    }
+  } else {
+    props.rec.joint_names = [{ ...initialData }];
+  }
+
+  return (
+    <>
+      <BlockTitle title="連名" />
+
+      {props.rec.joint_names &&
+        props.rec.joint_names.map((name, index) => (
+          <Grid container>
+            <Grid item sx={{ width: `${PictWidth}px` }}>
+              <Fab
+                size="small"
+                aria-label="add"
+                sx={{ ml: 9, color: "white", backgroundColor: "#c00000" }}
+                onClick={() => {
+                  if (props.rec.joint_names) {
+                    delete props.rec.joint_names[index];
+                    if (props.onChangeData) props.onChangeData(props.rec);
+                  }
+                  setCount(
+                    props.rec.joint_names ? props.rec.joint_names.length : 0
+                  );
+                }}
+              >
+                <RemoveIcon />
+              </Fab>
+            </Grid>
+
+            <Grid item sx={{ width: `calc( 100% - ${PictAreaWidth}px )` }}>
+              <EditBlockOneJointName
+                index={index}
+                abid={props.abid}
+                rec={props.rec}
+                onChangeField={props.onChangeField}
+              />
+            </Grid>
+            <Grid item xs={15}>
+              &nbsp;
+            </Grid>
+          </Grid>
+        ))}
+      <Grid container>
+        <Grid item sx={{ width: `${PictWidth}px` }}>
+          <Fab
+            size="small"
+            aria-label="add"
+            sx={{ ml: 9, color: "white", backgroundColor: "gray" }}
+            onClick={() => {
+              if (!props.rec.joint_names)
+                props.rec["joint_names"] = [{ ...initialData }];
+              else {
+                props.rec.joint_names.push({ ...initialData });
+              }
+              if (props.onChangeData) props.onChangeData(props.rec);
+              setCount(count + 1);
+            }}
+          >
+            <AddIcon />
+          </Fab>
+        </Grid>
+      </Grid>
+    </>
+  );
+};
+// ----------------------------------------------------------------
 
 const ABEditRecord = (props: { rec: ABRecEditStateType }) => {
   const user = useContext(UserContext);
@@ -1015,9 +1871,18 @@ const ABEditRecord = (props: { rec: ABRecEditStateType }) => {
       ...state.data,
       id: state.data ? state.data.id : ""
     };
-    newval[field] = value;
+    const rp = ReformField(newval, field);
+    rp.rec[rp.field] = value;
     setState({ ...state, data: newval });
-    console.log(`${field}=${value}`);
+    //console.log(`${field}=${value}`);
+  };
+  const adddelCallback = (rec: {}) => {
+    let newval: RecordType = {
+      ...rec,
+      id: state.data ? state.data.id : ""
+    };
+
+    setState({ ...state, data: newval });
   };
 
   let cont = <></>;
@@ -1031,8 +1896,6 @@ const ABEditRecord = (props: { rec: ABRecEditStateType }) => {
   } else if (state.status === "success") {
     const rec: RecordType = state.data ? state.data : { id: "" };
 
-    const rows = OutRecord(rec);
-
     //createData("name", name), createData("dessert", "Cupcake")];
     cont = (
       <div className="editConts">
@@ -1041,45 +1904,49 @@ const ABEditRecord = (props: { rec: ABRecEditStateType }) => {
           rec={rec}
           onChangeField={editCallback}
         />
+        <EditBlockOrg
+          abid={state.abid}
+          rec={rec}
+          onChangeField={editCallback}
+        />
+        <Divider sx={{ mt: 1 }} />
+        <EditBlockAddresses
+          abid={state.abid}
+          rec={rec}
+          onChangeField={editCallback}
+          onChangeData={adddelCallback}
+        />
 
-        <Box display="grid" gridTemplateColumns="repeat(12, 1fr)" gap={2}>
-          <Box gridColumn="span 10">
-            <Table aria-label="simple table">
-              <TableBody>
-                {rows.map((row) => (
-                  <TableRow key={row.title} sx={{ height: "1.2em" }}>
-                    <TableCell
-                      align="left"
-                      sx={{ py: 1, width: "10em", height: "1.2em" }}
-                    >
-                      {row.title}
-                    </TableCell>
-                    <TableCell
-                      size="medium"
-                      align="left"
-                      sx={{ py: 1, height: "1.2em" }}
-                    >
-                      {row.data.split(/\n|<br>|<br \/>/i).map((str) => {
-                        return <div>{str}</div>;
-                      })}
-                    </TableCell>
-                    <TableCell
-                      size="medium"
-                      align="left"
-                      sx={{ py: 1, width: "2em" }}
-                    >
-                      {row.icon && row.link && (
-                        <a href={row.link} target="cabhref">
-                          <row.icon />
-                        </a>
-                      )}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </Box>
-        </Box>
+        <Divider sx={{ mt: 1 }} />
+        <EditBlockTelephones
+          abid={state.abid}
+          rec={rec}
+          onChangeField={editCallback}
+          onChangeData={adddelCallback}
+        />
+
+        <Divider sx={{ mt: 1 }} />
+        <EditBlockEMails
+          abid={state.abid}
+          rec={rec}
+          onChangeField={editCallback}
+          onChangeData={adddelCallback}
+        />
+        <Divider sx={{ mt: 1 }} />
+        <EditBlockWebUrls
+          abid={state.abid}
+          rec={rec}
+          onChangeField={editCallback}
+          onChangeData={adddelCallback}
+        />
+
+        <Divider sx={{ mt: 1 }} />
+        <EditBlockJointNames
+          abid={state.abid}
+          rec={rec}
+          onChangeField={editCallback}
+          onChangeData={adddelCallback}
+        />
       </div>
     );
   } else if (state.status === "error") {

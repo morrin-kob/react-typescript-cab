@@ -392,14 +392,16 @@ h5 {
   border-radius: 2pt;
 }
 ***/
+:root {
+  --col-title: white;
+  --col-offical: "D7000F";
+}
+
 h1,
 h2,
 h3 {
-  background-color: #c00000;
+  background-color: var(--col-offical);
   color: white;
-}
-:root {
-  --col-title: white;
 }
 /*----------------------------------------------------------------------------*/
 
@@ -1084,7 +1086,8 @@ a:hover.menuitem3_sel {
   overflow: auto;
 }
 .editConts {
-  height: calc(100vh - 8.6em);
+  height: calc(100vh - 10.2em);
+  padding-bottom: 1ex;
   overflow: auto;
 }
 .datepicker {

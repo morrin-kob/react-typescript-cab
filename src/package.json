@@ -15,6 +15,7 @@
     "material-ui-popup-state": "^2.0.0",
     "react": "latest",
     "react-dom": "latest",
+    "react-query": "latest",
     "typescript": "4.7.4",
     "@types/react-dom": "latest",
     "@types/react-router-dom": "latest",
