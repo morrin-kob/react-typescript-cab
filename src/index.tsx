@@ -4,7 +4,14 @@ import "./App.css";
 import { RouterConfig } from "./RouterConfig";
 import { QueryClient, QueryClientProvider } from "react-query";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: false,
+      refetchOnWindowFocus: false
+    }
+  }
+});
 
 const container = document.getElementById("root");
 const root = createRoot(container);

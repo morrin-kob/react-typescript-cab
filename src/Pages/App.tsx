@@ -1,6 +1,6 @@
 import * as React from "react";
 //import { Footer } from "../components/Framing";
-import { CABContents, CABCtrlBar, CABEditCtrlBar } from "../Views/CloudAB";
+import { CABContents, CABCtrlBar, CABEditCtrlBar } from "../Views/CloudAB.next";
 import { CABSidebar, SBParamsType } from "../Views/Sidebar";
 import {
   RecordType,
@@ -12,7 +12,23 @@ import { ContentsPropsType } from "../AppSettings";
 import CABBaseLayout from "../Views/CABBaseLayout";
 import { useParams } from "react-router-dom";
 import { createBrowserHistory } from "history";
-import Button from "@mui/material/Button";
+
+// const initialData: ContentsPropsType = {
+//   filter: "",
+//   tags: "",
+//   id: abId || "",
+//   name: "",
+//   use: "private",
+//   editing: recId
+// };
+const emptyData: ContentsPropsType = {
+  filter: "",
+  tags: "",
+  id: "",
+  name: "",
+  use: "private",
+  editing: ""
+};
 
 let editingRec: ABRecEditStateType = { abid: "", recid: "", name: "" };
 
@@ -20,11 +36,10 @@ export const App: React.FC = () => {
   let { abId, recId } = useParams();
 
   const [mode, setMode] = React.useState<"list" | "edit">("list");
-
-  const refControlbar = React.createRef<CABCtrlBar>();
+  const [abbar, setAbbar] = React.useState<ContentsPropsType>({ ...emptyData });
 
   const fromHamberger = (info: ContentsPropsType) => {
-    if (refControlbar.current) refControlbar.current.setData(info);
+    setAbbar({ ...info });
   };
 
   const params: SBParamsType = { abId: abId || "", recId: recId || "" };
@@ -38,23 +53,6 @@ export const App: React.FC = () => {
 
   const onEndEditRecord = () => {
     setMode("list");
-  };
-
-  // const initialData: ContentsPropsType = {
-  //   filter: "",
-  //   tags: "",
-  //   id: abId || "",
-  //   name: "",
-  //   use: "private",
-  //   editing: recId
-  // };
-  const emptyData: ContentsPropsType = {
-    filter: "",
-    tags: "",
-    id: "",
-    name: "",
-    use: "private",
-    editing: ""
   };
 
   const history = createBrowserHistory();
@@ -77,11 +75,7 @@ export const App: React.FC = () => {
   const getContents = () => {
     if (mode === "list") {
       return (
-        <CABCtrlBar
-          ref={refControlbar}
-          history={history}
-          abook={{ ...emptyData }}
-        >
+        <CABCtrlBar abook={{ ...abbar }}>
           {/* it's going to get set data when it clones */}
           <CABContents abook={{ ...emptyData }} onEditRecord={onEditRecord} />
         </CABCtrlBar>

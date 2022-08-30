@@ -50,7 +50,7 @@ type ContentsPropsType = {
   use: "private" | "corp";
   color?: string;
   icon?: string;
-  command?: "settings" | "import" | "export" | "share" | "delete";
+  command?: "newrec" | "import" | "export" | "share" | "delete";
   editing?: string; // record-id
 };
 

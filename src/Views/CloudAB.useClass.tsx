@@ -42,6 +42,7 @@ import {
   isHomeAddress
 } from "../AppSettings";
 import LinearProgress from "@mui/material/LinearProgress";
+import { useRef } from "react";
 import { BrowserHistory } from "history";
 import DefPersonImg from "../assets/images/person.png";
 
@@ -53,6 +54,41 @@ type ABInfoType = {
   abookname: string;
   error: string;
 };
+
+// function loadAddress(
+//   user: UserContextType,
+//   abook: ContentsPropsType,
+//   whenLoad: (data: {}) => void
+// ) {
+//   // addresses/[group_id]/list
+//   let url = user.getEpt();
+//   if (isHomeAddress(abook.id)) {
+//     url += "/homeaddresses/list";
+//   } else {
+//     url += `/addresses/${abook.id}/list`;
+//   }
+//   // console.log(
+//   //   `ajaxGet( ${url}, { access_token: ${user.getAToken()}, groupid: ${abook["id"]} } )`
+//   // );
+//   let params = {
+//     atk: user.getAToken(),
+//     ept: user.getEpm(),
+//     uag: user.getUag()
+//   };
+//   //console.log(`ajaxGet(${url}, ${JSON.stringify(params)})`);
+//   ajaxGet(url, params, (json) => {
+//     if ("data" in json) {
+//       whenLoad(json);
+//     } else {
+//       if (parseInt(json["statusCode"], 10) === 401) {
+//         console.log("loadAddress() RefreshToken!");
+//         user.RefreshAndRetry(url, "GET", params, whenLoad);
+//       } else {
+//         whenLoad(json);
+//       }
+//     }
+//   });
+// }
 
 function get_liner_Progress() {
   return (
@@ -71,14 +107,6 @@ let abinfo: ABInfoType = {
   error: ""
 };
 
-type RecdlgState = {
-  open: boolean;
-  rec: {
-    id: string;
-    name: string;
-  };
-};
-
 function CABAddressList(props: {
   abook: ContentsPropsType;
   onEditRecord: (abookId: string, rec: RecordType) => void;
@@ -86,10 +114,6 @@ function CABAddressList(props: {
   const user = useContext(UserContext);
   //const [loaded, setLoaded] = React.useState(false);
   const [rlcounter, setRlcounter] = React.useState(0);
-  const [recdlg, setRecdlg] = React.useState<RecdlgState>({
-    open: false,
-    rec: { id: "", name: "" }
-  });
   const [page, setPage] = React.useState(0);
   const [rowsPerPage, setRowsPerPage] = React.useState(25);
 
@@ -127,26 +151,54 @@ function CABAddressList(props: {
     setPage(0);
   };
 
-  const closeRecDialog = () => {
-    setRecdlg({ ...recdlg, open: false });
-  };
+  //  const recdlg = useRef(null);
+  const recdlg = useRef<ABRecDialog>(null);
 
   const handleOnEdit = (key: string, label: string) => {
     props.onEditRecord(props.abook.id, { id: key });
+    // if (recdlg && recdlg.current) {
+    //   recdlg.current.setState({
+    //     recid: key,
+    //     name: label,
+    //     open: true
+    //   });
+    // }
   };
   const handleOnShowDetail = (key: string, label: string) => {
-    setRecdlg({ open: true, rec: { id: key, name: label } });
+    if (recdlg && recdlg.current) {
+      recdlg.current.setState({
+        ...recdlg.current.state,
+        //status: "loading",
+        recid: key,
+        name: label,
+        open: true
+      });
+    }
   };
-
-  const onDeleteRecord = (abid: string, rec: RecordType) => {
-    closeRecDialog();
-  };
-
-  const onCopyRecord = (abid: string, rec: RecordType) => {};
-
-  const onSendRecord = (abid: string, rec: RecordType) => {};
 
   let cont = null;
+
+  // if (props.abook.id && props.abook.id.length) {
+  //   if (abinfo.loaded) {
+  //     if (
+  //       abinfo.currentabook !== props.abook.id ||
+  //       abinfo.abookname !== props.abook.name
+  //     ) {
+  //       abinfo.currentabook = props.abook.id;
+  //       abinfo.abookname = props.abook.name;
+  //       abinfo.addressData = [];
+  //       abinfo.abloading = false;
+  //       //setLoaded(false);
+  //       abinfo.loaded = false;
+  //     }
+  //   } else {
+  //     abinfo.currentabook = props.abook.id;
+  //     if (abinfo.abookname !== props.abook.name) {
+  //       abinfo.abloading = false;
+  //       abinfo.abookname = props.abook.name;
+  //     }
+  //   }
+  // }
 
   if (isError) {
     const load = reformResponse(error || { error: "ロードエラーです" });
@@ -172,6 +224,54 @@ function CABAddressList(props: {
       abinfo.addressData = data["data"];
       console.log(`loaded:${props.abook.name}`);
 
+      // if (abinfo.addressData.length === 0) {
+      //   if (abinfo.abloading === false) {
+      //     if (abinfo.currentabook) {
+      //       abinfo.abloading = true;
+      //       abinfo.error = "";
+
+      //       if (abinfo.abookname) {
+      //         loadAddress(user, props.abook, (load) => {
+      //           //console.log("loadAddress: " + JSON.stringify(load));
+      //           if (load && "data" in load && Array.isArray(load["data"])) {
+      //             abinfo.addressData = load["data"];
+      //             //console.log(`loadAddress(): ${JSON.stringify(load)}`);
+      //           } else {
+      //             //console.log(`load-error:${JSON.stringify(load)}`);
+      //             abinfo.error =
+      //               load["error"] || load["statusText"] || "ロードエラーです";
+      //           }
+      //           //abinfo.abloading = false;
+      //           // console.log(
+      //           //   `loading has finished: length=${abinfo.addressData.length}`
+      //           // );
+      //           abinfo.loaded = true;
+      //           //setLoaded(true);
+      //           setRlcounter(rlcounter + 1);
+      //           setPage(0);
+      //         });
+      //       }
+      //     }
+      //   }
+      //   if (!abinfo.loaded) {
+      //     if (abinfo.abloading) {
+      //       cont = get_liner_Progress();
+      //       //console.log(`progress`);
+      //     } else {
+      //       cont = (
+      //         <Box sx={{ width: "100%", mt: 20 }}>
+      //           <p>Choose Address-Book from the hamburger-menu.</p>
+      //         </Box>
+      //       );
+      //     }
+      //   } else {
+      //     cont = (
+      //       <Box sx={{ width: "100%", mt: 20 }}>
+      //         {abinfo.error && <p>{abinfo.error}</p>}
+      //       </Box>
+      //     );
+      //   }
+      // } else {
       const columns_home: CETColumnType[] = [
         // : GridColDef[]
         {
@@ -356,21 +456,15 @@ function CABAddressList(props: {
               }}
             />
 
-            {recdlg.open && (
-              <ABRecDialog
-                recid={recdlg.rec.id}
-                name={recdlg.rec.name}
-                user={user}
-                abook={props.abook}
-                onEdit={props.onEditRecord}
-                onDelete={onDeleteRecord}
-                onCopy={onCopyRecord}
-                onSend={onSendRecord}
-                onClose={() => {
-                  closeRecDialog();
-                }}
-              />
-            )}
+            <ABRecDialog
+              user={user}
+              abook={props.abook}
+              onEdit={props.onEditRecord}
+              onDelete={props.onEditRecord}
+              onCopy={() => {}}
+              onSend={() => {}}
+              ref={recdlg}
+            />
           </div>
         );
       }

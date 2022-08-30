@@ -36,7 +36,11 @@ import ButtonBase from "@mui/material/ButtonBase";
 import CloseIcon from "@mui/icons-material/Close";
 import Checkbox from "@mui/material/Checkbox";
 import { isMobile } from "react-device-detect";
-
+import Radio from "@mui/material/Radio";
+import RadioGroup from "@mui/material/RadioGroup";
+import FormControlLabel from "@mui/material/FormControlLabel";
+import FormControl from "@mui/material/FormControl";
+import FormLabel from "@mui/material/FormLabel";
 import PulldownMenu, {
   PulldownMenuItem
 } from "../components/PulldownMenuButton";
@@ -62,6 +66,7 @@ import {
   ReformField,
   ColorBox
 } from "../components/EditParts";
+import { ABIcon, iconlist } from "./ABIcons";
 
 type ABSettingDialogPropsType = {
   abook: ContentsPropsType;
@@ -94,6 +99,7 @@ export default class ABSettings extends React.Component<
   ABSettingDialogPropsType,
   ABSettingDialogStateType
 > {
+  onSave: (abook: ContentsPropsType) => void;
   constructor(props: ABSettingDialogPropsType) {
     super(props);
     //    this.user = useContext(UserContext);
@@ -104,14 +110,21 @@ export default class ABSettings extends React.Component<
     };
   }
 
-  handleOpen = (abook: ContentsPropsType) => {
+  handleOpen = (
+    abook: ContentsPropsType,
+    onChange: (abook: ContentsPropsType) => void
+  ) => {
+    this.onSave = onChange;
     this.setState({ open: true, abname: abook.name, abook: abook });
   };
 
   handleClose = () => {
     this.setState({ ...this.state, open: false });
   };
-  handleSave = () => {};
+  handleSave = () => {
+    this.onSave(this.state.abook);
+    this.setState({ ...this.state, open: false });
+  };
 
   onChangeField = (field: string, value: string) => {
     let newVal = { ...this.state.abook };
@@ -151,6 +164,15 @@ export default class ABSettings extends React.Component<
     }
   };
 
+  getCurrABIcon = () => {
+    return this.state && this.state.abook.icon ? this.state.abook.icon : "book";
+  };
+  handleSetIcon = (icon: string) => {
+    if (this.getCurrABIcon() !== icon) {
+      this.onChangeField("icon", icon);
+    }
+  };
+
   render() {
     const buttons: DlgButtonProps[] = [
       { caption: "保存", color: "success", onclick: this.handleSave },
@@ -159,7 +181,7 @@ export default class ABSettings extends React.Component<
 
     let cont = <></>;
 
-    let cxDlg: string = isMobile ? "calc( 100vw )" : "calc( 70vw )";
+    let cxDlg: string = isMobile ? "calc( 100vw )" : "calc( 80vw )";
 
     let cxBox = 36;
     let cyBox = 36;
@@ -167,7 +189,7 @@ export default class ABSettings extends React.Component<
 
     return (
       <Dialog open={this.state.open} onClose={this.handleClose}>
-        <DialogTitle sx={{ width: cxDlg, minWidth: "12em", maxWidth: 600 }}>
+        <DialogTitle sx={{ width: cxDlg, minWidth: "20em", maxWidth: 600 }}>
           住所録の設定 - {this.state.abname}
           <IconButton
             aria-label="close"
@@ -206,7 +228,62 @@ export default class ABSettings extends React.Component<
               </Grid>
             ))}
           </Grid>
+          {/* --------------------------------- */}
+          <EditFieldTitle title="住所録アイコンの変更" />
+          <Grid container sx={{ width: cbareaWidth }} columns={8}>
+            {Object.keys(iconlist).map((key) => (
+              <Grid item xs={1}>
+                <ColorBox
+                  width={cxBox}
+                  height={cyBox}
+                  color="transparent"
+                  abicon={key}
+                  selected={this.getCurrABIcon() === key}
+                  icon_sx={{ color: this.getCurrABColor() }}
+                  onClick={this.handleSetIcon}
+                />
+              </Grid>
+            ))}
+          </Grid>
+
+          {/* --------------------------------- */}
+          <EditFieldTitle title="リスト表示形式" />
+
+          <FormControl>
+            <FormLabel id="listtype-label">
+              住所録を表示する形式を選択して下さい。
+            </FormLabel>
+            <RadioGroup
+              aria-labelledby="listtype-label"
+              defaultValue="private"
+              value={this.state.abook.use}
+              name="radio-buttons-group"
+              onChange={(e) => {
+                this.onChangeField("use", e.target.value);
+              }}
+            >
+              <FormControlLabel
+                value="private"
+                control={<Radio />}
+                label={
+                  <Box style={{ fontSize: "90%" }}>
+                    標準（氏名、写真、住所、電話番号を表示）
+                  </Box>
+                }
+              />
+              <FormControlLabel
+                value="corp"
+                control={<Radio />}
+                label={
+                  <Box style={{ fontSize: "90%" }}>
+                    会社（氏名、勤務先、住所、電話番号を表示）
+                  </Box>
+                }
+              />
+            </RadioGroup>
+          </FormControl>
         </DialogContent>
+        <Divider />
         <DialogActions>
           {buttons.map((button) => {
             return (

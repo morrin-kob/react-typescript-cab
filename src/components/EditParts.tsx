@@ -16,6 +16,8 @@ import Divider from "@mui/material/Divider";
 import Button from "@mui/material/Button";
 import Box from "@mui/material/Box";
 import { Typography } from "@mui/material";
+import { ABIcon } from "../Views/ABIcons";
+
 export const EditFieldTitle = (props: { title: string }) => {
   return (
     <h5 style={{ marginBottom: "2ex", marginTop: "2ex" }}>{props.title}</h5>
@@ -259,40 +261,53 @@ type colboxProps = {
   width: number;
   height: number;
   color: string;
-  checked: boolean;
+  checked?: boolean;
+  selected?: boolean;
+  abicon?: string;
+  icon_sx?: any;
   onClick: (color: string) => void;
 };
 export const ColorBox = (props: colboxProps) => {
   let fontsize = props.width < props.height ? props.width : props.height;
   fontsize = parseInt("" + fontsize * 0.7, 10);
+  let sx = {
+    width: props.width,
+    height: props.height,
+    backgroundColor: `#${props.color}`,
+    "&:hover": {
+      borderStyle: "solid",
+      borderColor: "silver",
+      borderWidth: 1,
+      opacity: [0.9, 0.8, 0.7]
+    }
+  };
+  if (props.selected) {
+    sx["borderStyle"] = "solid";
+    sx["borderColor"] = "black";
+    sx["borderWidth"] = 1;
+  }
+  let iconsx = {};
+  if (props.icon_sx) {
+    iconsx = { ...props.icon_sx };
+  }
 
   return (
     <Box
-      onClick={(e) => props.onClick(props.color)}
-      sx={{
-        width: props.width,
-        height: props.height,
-        backgroundColor: `#${props.color}`,
-        "&:hover": {
-          borderStyle: "solid",
-          borderColor: "white",
-          borderWidth: 1,
-          opacity: [0.9, 0.8, 0.7]
-        }
-      }}
+      onClick={(e) => props.onClick(props.abicon ? props.abicon : props.color)}
+      sx={sx}
     >
-      {props.checked && (
-        <div
-          style={{
-            color: "white",
-            textAlign: "center",
-            verticalAlign: "middle",
-            fontSize: fontsize
-          }}
-        >
-          ✔
-        </div>
-      )}
+      <div
+        style={{
+          color: "white",
+          textAlign: "center",
+          verticalAlign: "middle",
+          alignItems: "center",
+          fontSize: fontsize
+        }}
+      >
+        {props.checked && <>✔</>}
+        {props.abicon && <ABIcon name={props.abicon} sx={iconsx} />}
+      </div>
     </Box>
   );
 };

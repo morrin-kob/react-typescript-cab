@@ -134,7 +134,7 @@ pre {
   --bgcol-footer: rgb(236, 236, 236);
   --bgcol-topicbox: #f8f8f8;
 
-  --frmcol-dialog: var(--bgcol-header);
+  --frmcol-dialog: #2080a0;
 
   --shcol-header-bottom: rgba(0, 0, 0, 0.5);
 

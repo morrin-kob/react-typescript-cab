@@ -150,17 +150,23 @@ export type RecordType = {
 };
 
 type ABRecDialogPropsType = {
-  recid: string;
-  name: string;
   user: UserContextType;
   abook: ContentsPropsType;
   onEdit: (abookId: string, rec: RecordType) => void;
   onDelete: (abookId: string, rec: RecordType) => void;
   onCopy: (abookId: string, rec: RecordType) => void;
   onSend: (abookId: string, rec: RecordType) => void;
-  onClose: () => void;
 };
 
+type ABRecDialogStateType = {
+  open: boolean;
+  recid: string;
+  name: string;
+  status: "loading" | "success" | "error";
+  statusText: string;
+  data: RecordType;
+  msgbox?: MessageBoxProps;
+};
 type ABRecEditStateType = {
   abid: string;
   recid: string;
@@ -252,7 +258,22 @@ function PersonalPicture(props: {
     } else {
       url += `${props.rec.id}/${props.rec.face_picture.image}.jpg?t=T`;
     }
+
+    // setTimeout(() => {
+    //   setImgurl(url);
+    // }, 500);
   }
+  //   let params = {
+  //     t: "T",
+  //     atk: user.getAToken(),
+  //     ept: user.getEpm(),
+  //     uag: user.getUag()
+  //   };
+  //   console.log(`ImageUrl-url:${url}`);
+  //   ajaxGet(url, params, (json) => {
+  //     setImgurl(JSON.stringify(json));
+  //   });
+  // }
 
   let cont = (
     <img
@@ -477,48 +498,44 @@ const loadRecord = (
   });
 };
 
-type statusType = {
-  status: "loading" | "success" | "error";
-  text: string;
-};
-
 //
 // １レコードの詳細を表示するダイアログ
 //　編集はまた別の　ページorダイアログ
-const ABRecDialog = (props: ABRecDialogPropsType) => {
-  const [open, setOpen] = React.useState(true);
-  const [status, setStatus] = React.useState<statusType>({
-    status: "loading",
-    text: ""
-  });
-  const [recdata, setRecData] = React.useState({ id: "" });
-  const [msgbox, setMsgbox] = React.useState<MessageBoxProps>(undefined);
+export default class ABRecDialog extends React.Component<
+  ABRecDialogPropsType,
+  ABRecDialogStateType
+> {
+  //msgbox: React.RefObject<MessageBox>;
+  constructor(props: ABRecDialogPropsType) {
+    super(props);
+    //    this.user = useContext(UserContext);
+    this.state = {
+      open: false,
+      recid: "",
+      name: "",
+      status: "loading",
+      statusText: "",
+      data: { id: "" }
+    };
+    //this.msgbox = React.createRef<MessageBox>();
+  }
 
-  const user = useContext(UserContext);
-
-  const handleClose = () => {
-    setOpen(false);
-    props.onClose();
+  handleClose = () => {
+    this.setState({ ...this.state, status: "loading", open: false });
   };
 
-  const handleEdit = () => {
-    handleClose();
-    console.log(`Edit:${JSON.stringify(recdata)}`);
-    props.onEdit(props.abook.id, recdata);
+  handleEdit = () => {
+    this.handleClose();
+    console.log(`Edit:${JSON.stringify(this.state.data)}`);
+    this.props.onEdit(this.props.abook.id, this.state.data);
   };
 
-  const execDelete = () => {
-    setOpen(false);
-    console.log(`Delete:${JSON.stringify(recdata)}`);
-    props.onDelete(props.abook.id, recdata);
+  execDelete = () => {
+    console.log(`Delete:${JSON.stringify(this.state.data)}`);
     //this.props.onDelete(this.props.abook.id, this.state.data);
   };
-  const cancelMsgBox = () => {
-    setMsgbox(undefined);
-  };
-
-  const handleDelete = () => {
-    const name = ReformName(recdata);
+  handleDelete = () => {
+    const name = ReformName(this.state.data);
     let msgbox: MessageBoxProps = {
       caption: "確認",
       message: `${name}さんのレコードを削除します`,
@@ -527,188 +544,215 @@ const ABRecDialog = (props: ABRecDialogPropsType) => {
         {
           text: "確認",
           handler: () => {
-            cancelMsgBox();
-            execDelete();
+            //this.handleClose();
+            this.setState({ ...this.state, msgbox: undefined });
+            this.execDelete();
           }
         }
       ],
       onCancel: () => {
-        cancelMsgBox();
+        this.setState({ ...this.state, msgbox: undefined });
       }
     };
-    setMsgbox(msgbox);
+    this.setState({ ...this.state, msgbox: msgbox });
   };
 
-  if (open === true && status.status === "loading") {
-    if (recdata.id === props.recid) {
-      if (recdata.id) {
-        setStatus({ status: "success", text: "ok" });
-      }
-    } else {
-      loadRecord(user, props.abook.id, props.recid, (json) => {
-        if ("data" in json) {
-          setRecData(json["data"]);
-          setStatus({ status: "success", text: "ok" });
-        } else {
-          let error: string =
-            json["error"] || json["statusMessage"] || "ロードに失敗しました";
-          setStatus({ status: "error", text: error });
+  render() {
+    if (this.state.open === true && this.state.status === "loading") {
+      if (this.state.data.id === this.state.recid) {
+        if (this.state.recid) {
+          this.setState({
+            ...this.state,
+            status: "success",
+            statusText: "ok"
+          });
         }
-      });
+      } else {
+        loadRecord(
+          this.props.user,
+          this.props.abook.id,
+          this.state.recid,
+          (json) => {
+            if ("data" in json) {
+              this.setState({
+                ...this.state,
+                data: json["data"],
+                status: "success",
+                statusText: "ok"
+              });
+            } else {
+              let error: string =
+                json["error"] ||
+                json["statusMessage"] ||
+                "ロードに失敗しました";
+              this.setState({
+                ...this.state,
+                status: "error",
+                statusText: error
+              });
+            }
+          }
+        );
+      }
     }
-  }
 
-  let name = props.name;
-  let cont = <></>;
-  if (status.status === "loading") {
-    if (open) {
+    let name = this.state.name;
+    let cont = <></>;
+    if (this.state.status === "loading") {
+      if (this.state.open) {
+        cont = (
+          <Box
+            sx={{ width: "40em", maxWidth: "80%", mt: 10, textAlign: "center" }}
+          >
+            <div className="textcenter">loading...</div>
+            <CircularProgress />
+          </Box>
+        );
+      }
+    } else if (this.state.status === "success") {
+      const rec: RecordType = this.state.data;
+      name = ReformName(rec);
+
+      const rows = OutRecord(rec);
+
+      //createData("name", name), createData("dessert", "Cupcake")];
+
       cont = (
-        <Box
-          sx={{ width: "40em", maxWidth: "80%", mt: 10, textAlign: "center" }}
-        >
-          <div className="textcenter">loading...</div>
-          <CircularProgress />
-        </Box>
+        <div>
+          <Box display="grid" gridTemplateColumns="repeat(12, 1fr)" gap={2}>
+            <Box gridColumn="span 2">
+              <PersonalPicture
+                abId={this.props.abook.id}
+                rec={rec}
+                cx={64}
+                cy={64}
+              />
+            </Box>
+            <Box gridColumn="span 10">
+              <Table aria-label="simple table">
+                <TableBody>
+                  {rows.map((row) => (
+                    <TableRow key={row.title} sx={{ height: "1.2em" }}>
+                      <TableCell
+                        align="left"
+                        sx={{ py: 1, width: "10em", height: "1.2em" }}
+                      >
+                        {row.title}
+                      </TableCell>
+                      <TableCell
+                        size="medium"
+                        align="left"
+                        sx={{ py: 1, height: "1.2em" }}
+                      >
+                        {row.data.split(/\n|<br>|<br \/>/i).map((str) => {
+                          return <div>{str}</div>;
+                        })}
+                      </TableCell>
+                      <TableCell
+                        size="medium"
+                        align="left"
+                        sx={{ py: 1, width: "2em" }}
+                      >
+                        {row.icon && row.link && (
+                          <a href={row.link} target="cabhref">
+                            <row.icon />
+                          </a>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </Box>
+          </Box>
+        </div>
+      );
+    } else if (this.state.status === "error") {
+      cont = (
+        <div style={{ width: "calc( 80vw )" }}>
+          <h3>failed</h3>
+          <p>{this.state.statusText}</p>
+        </div>
       );
     }
-  } else if (status.status === "success") {
-    const rec: RecordType = recdata;
-    name = ReformName(rec);
 
-    const rows = OutRecord(rec);
+    type DlgButtonProps = {
+      caption: string;
+      color:
+        | "inherit"
+        | "primary"
+        | "secondary"
+        | "success"
+        | "error"
+        | "info"
+        | "warning";
+      onclick: () => void;
+    };
 
-    //createData("name", name), createData("dessert", "Cupcake")];
+    type MakeButtonType = (
+      caption: string,
+      color:
+        | "inherit"
+        | "primary"
+        | "secondary"
+        | "success"
+        | "error"
+        | "info"
+        | "warning",
+      onclick: () => void
+    ) => DlgButtonProps;
 
-    cont = (
-      <div>
-        <Box display="grid" gridTemplateColumns="repeat(12, 1fr)" gap={2}>
-          <Box gridColumn="span 2">
-            <PersonalPicture abId={props.abook.id} rec={rec} cx={64} cy={64} />
-          </Box>
-          <Box gridColumn="span 10">
-            <Table aria-label="simple table">
-              <TableBody>
-                {rows.map((row) => (
-                  <TableRow key={row.title} sx={{ height: "1.2em" }}>
-                    <TableCell
-                      align="left"
-                      sx={{ py: 1, width: "10em", height: "1.2em" }}
-                    >
-                      {row.title}
-                    </TableCell>
-                    <TableCell
-                      size="medium"
-                      align="left"
-                      sx={{ py: 1, height: "1.2em" }}
-                    >
-                      {row.data.split(/\n|<br>|<br \/>/i).map((str) => {
-                        return <div>{str}</div>;
-                      })}
-                    </TableCell>
-                    <TableCell
-                      size="medium"
-                      align="left"
-                      sx={{ py: 1, width: "2em" }}
-                    >
-                      {row.icon && row.link && (
-                        <a href={row.link} target="cabhref">
-                          <row.icon />
-                        </a>
-                      )}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </Box>
-        </Box>
-      </div>
-    );
-  } else if (status.status === "error") {
-    cont = (
-      <div style={{ width: "calc( 80vw )" }}>
-        <h3>failed</h3>
-        <p>{status.text}</p>
-      </div>
+    const makeButton: MakeButtonType = (caption, color, onclick) => {
+      return { caption: caption, color: color, onclick: onclick };
+    };
+
+    const buttons: DlgButtonProps[] = [];
+    if (this.state.status === "success") {
+      buttons.push(makeButton("削除", "warning", this.handleDelete));
+      buttons.push(makeButton("他のユーザに送信", "primary", this.handleClose));
+      buttons.push(makeButton("コピー", "primary", this.handleClose));
+      buttons.push(makeButton("編集", "success", this.handleEdit));
+    }
+    buttons.push(makeButton("閉じる", "primary", this.handleClose));
+
+    let cxDlg = isMobile ? "100%" : "70%";
+
+    return (
+      <Dialog open={this.state.open} onClose={this.handleClose}>
+        <DialogTitle sx={{ width: { cxDlg }, maxWidth: 600 }}>
+          {name}
+          <IconButton
+            aria-label="close"
+            onClick={this.handleClose}
+            sx={{
+              color: "white",
+              position: "absolute",
+              right: 8,
+              top: 8
+            }}
+          >
+            <CloseIcon />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent>{cont}</DialogContent>
+        <DialogActions>
+          {buttons.map((button) => {
+            return (
+              <Button
+                color={button.color}
+                variant="contained"
+                onClick={button.onclick}
+              >
+                {button.caption}
+              </Button>
+            );
+          })}
+        </DialogActions>
+        {this.state.msgbox && <MessageBox {...this.state.msgbox} />}
+      </Dialog>
     );
   }
-
-  type DlgButtonProps = {
-    caption: string;
-    color:
-      | "inherit"
-      | "primary"
-      | "secondary"
-      | "success"
-      | "error"
-      | "info"
-      | "warning";
-    onclick: () => void;
-  };
-
-  type MakeButtonType = (
-    caption: string,
-    color:
-      | "inherit"
-      | "primary"
-      | "secondary"
-      | "success"
-      | "error"
-      | "info"
-      | "warning",
-    onclick: () => void
-  ) => DlgButtonProps;
-
-  const makeButton: MakeButtonType = (caption, color, onclick) => {
-    return { caption: caption, color: color, onclick: onclick };
-  };
-
-  const buttons: DlgButtonProps[] = [];
-  if (status.status === "success") {
-    buttons.push(makeButton("削除", "warning", handleDelete));
-    buttons.push(makeButton("他のユーザに送信", "primary", handleClose));
-    buttons.push(makeButton("コピー", "primary", handleClose));
-    buttons.push(makeButton("編集", "success", handleEdit));
-  }
-  buttons.push(makeButton("閉じる", "primary", handleClose));
-
-  let cxDlg = isMobile ? "100%" : "70%";
-
-  return (
-    <Dialog open={open} onClose={handleClose}>
-      <DialogTitle sx={{ width: { cxDlg }, maxWidth: 600 }}>
-        {name}
-        <IconButton
-          aria-label="close"
-          onClick={handleClose}
-          sx={{
-            color: "white",
-            position: "absolute",
-            right: 8,
-            top: 8
-          }}
-        >
-          <CloseIcon />
-        </IconButton>
-      </DialogTitle>
-      <DialogContent>{cont}</DialogContent>
-      <DialogActions>
-        {buttons.map((button) => {
-          return (
-            <Button
-              color={button.color}
-              variant="contained"
-              onClick={button.onclick}
-            >
-              {button.caption}
-            </Button>
-          );
-        })}
-      </DialogActions>
-      {msgbox && <MessageBox {...msgbox} />}
-    </Dialog>
-  );
-};
+}
 
 type EditBlockProp = {
   abid: string;
@@ -1973,5 +2017,9 @@ const ABEditRecord = (props: { rec: ABRecEditStateType }) => {
   return <>{cont}</>;
 };
 
-export default ABRecDialog;
-export { ABRecDialogPropsType, ABRecEditStateType, ABEditRecord };
+export {
+  ABRecDialogPropsType,
+  ABRecDialogStateType,
+  ABRecEditStateType,
+  ABEditRecord
+};

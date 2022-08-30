@@ -33,15 +33,28 @@ import FolderSharedIcon from "@mui/icons-material/FolderShared";
 import Divider from "@mui/material/Divider";
 import Button from "@mui/material/Button";
 import Badge from "@mui/material/Badge";
+import { ABIcon } from "./ABIcons";
 
 function WarningBlock(props: { message: string }) {
   let alert = null;
   if (props.message && props.message.length) {
-    alert = <Alert severity="error">{props.message}</Alert>;
+    alert = (
+      <Box sx={{ width: "100%", mt: 20 }}>
+        <Alert severity="error">{props.message}</Alert>
+      </Box>
+    );
   } else {
     alert = <p>&nbsp;</p>;
   }
-  return <>{alert}</>;
+  return alert;
+}
+
+function CircleProgress(props: any) {
+  return (
+    <Box sx={{ width: "100%", mt: 20, textAlign: "center" }}>
+      <CircularProgress />
+    </Box>
+  );
 }
 
 export type SBParamsType = {
@@ -56,6 +69,7 @@ function CABBookList(props: {
   handleSetABook: (info: ContentsPropsType) => void;
 }) {
   const user = useContext(UserContext);
+  const [rlcounter, setRlcounter] = React.useState(0);
 
   const { isLoading, isFetching, isError, data, error } = useQuery(
     "groups_list",
@@ -76,54 +90,58 @@ function CABBookList(props: {
   if (isError) {
     const load = reformResponse(error || "ロードエラーです");
     let errormess = load["error"] || load["statusText"] || "ロードエラーです";
-    cont = (
-      <Box sx={{ width: "100%", mt: 20 }}>
-        <p>{errormess}</p>
-      </Box>
-    );
+    cont = <WarningBlock message={errormess} />;
   } else if (isLoading || isFetching) {
-    cont = (
-      <Box sx={{ width: "100%", mt: 20, textAlign: "center" }}>
-        <CircularProgress />
-      </Box>
-    );
-  } else if (data && "data" in data) {
-    cont = (
-      <List>
-        {data["data"].map((info: any, index: number) => (
-          <MenuItem
-            onClick={() => {
-              let ab: ContentsPropsType = info;
-              props.handleSetABook(ab);
-            }}
-            key={index}
-            sx={{ height: 42 }}
-            divider={true}
-          >
-            <Grid container columns={12}>
-              <Grid container={true} item xs={11}>
-                <SourceIcon sx={{ mr: 1 }} color="info" />
-                {info.name}
+    cont = <CircleProgress />;
+  } else {
+    //if (data && "data" in data) {
+    if ("data" in data === false) {
+      if (parseInt(data["statusCode"], 10) === 401) {
+        user.RefreshToken((res: {}) => {
+          if (res["a_token"]) {
+            setRlcounter(rlcounter + 1);
+          }
+        });
+      }
+      cont = <CircleProgress />;
+    } else {
+      cont = (
+        <List>
+          {data["data"].map((info: any, index: number) => (
+            <MenuItem
+              onClick={() => {
+                let ab: ContentsPropsType = info;
+                props.handleSetABook(ab);
+              }}
+              key={index}
+              sx={{ height: 42 }}
+              divider={true}
+            >
+              <Grid container columns={12}>
+                <Grid container={true} item xs={11}>
+                  <ABIcon name={info.icon} sx={{ mr: 1, color: info.color }} />
+                  {info.name}
+                </Grid>
+                <Grid item xs={1}>
+                  <Badge
+                    max={99999}
+                    sx={{ mb: 2 }}
+                    anchorOrigin={{
+                      vertical: "bottom",
+                      horizontal: "right"
+                    }}
+                    color="info"
+                    badgeContent={info["summary"].count}
+                  >
+                    &nbsp;
+                  </Badge>
+                </Grid>
               </Grid>
-              <Grid item xs={1}>
-                <Badge
-                  max={99999}
-                  sx={{ mb: 2 }}
-                  anchorOrigin={{
-                    vertical: "bottom",
-                    horizontal: "right"
-                  }}
-                  color="info"
-                  badgeContent={info["summary"].count}
-                >
-                  &nbsp;
-                </Badge>
-              </Grid>
-            </Grid>
-          </MenuItem>
-        ))}
-      </List>
-    );
+            </MenuItem>
+          ))}
+        </List>
+      );
+    }
   }
   return cont;
 }
@@ -156,7 +174,7 @@ function CABSidebar(props: {
     setABook(key);
   };
 
-  // Tag指定に変化があった時に発火
+  // fire on choosed ab
   useEffect(() => {
     if (abook.id) {
       nav(`/ab/${abook.id}`);
