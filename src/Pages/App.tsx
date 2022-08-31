@@ -1,6 +1,6 @@
 import * as React from "react";
 //import { Footer } from "../components/Framing";
-import { CABContents, CABCtrlBar, CABEditCtrlBar } from "../Views/CloudAB.next";
+import { CABContents, CABCtrlBar, CABEditCtrlBar } from "../Views/CloudAB";
 import { CABSidebar, SBParamsType } from "../Views/Sidebar";
 import {
   RecordType,
@@ -75,10 +75,11 @@ export const App: React.FC = () => {
   const getContents = () => {
     if (mode === "list") {
       return (
-        <CABCtrlBar abook={{ ...abbar }}>
-          {/* it's going to get set data when it clones */}
-          <CABContents abook={{ ...emptyData }} onEditRecord={onEditRecord} />
-        </CABCtrlBar>
+        <>
+          <CABCtrlBar abook={{ ...abbar }}>
+            <CABContents abook={{ ...abbar }} onEditRecord={onEditRecord} />
+          </CABCtrlBar>
+        </>
       );
     } else if (mode === "edit") {
       return (

@@ -492,7 +492,11 @@ const ABRecDialog = (props: ABRecDialogPropsType) => {
     text: ""
   });
   const [recdata, setRecData] = React.useState({ id: "" });
-  const [msgbox, setMsgbox] = React.useState<MessageBoxProps>(undefined);
+  const [msgbox, setMsgbox] = React.useState<MessageBoxProps>({
+    open: false,
+    caption: "",
+    message: ""
+  });
 
   const user = useContext(UserContext);
 
@@ -513,13 +517,15 @@ const ABRecDialog = (props: ABRecDialogPropsType) => {
     props.onDelete(props.abook.id, recdata);
     //this.props.onDelete(this.props.abook.id, this.state.data);
   };
+
   const cancelMsgBox = () => {
-    setMsgbox(undefined);
+    setMsgbox({ ...msgbox, open: false });
   };
 
   const handleDelete = () => {
     const name = ReformName(recdata);
-    let msgbox: MessageBoxProps = {
+    let mbdata: MessageBoxProps = {
+      open: true,
       caption: "確認",
       message: `${name}さんのレコードを削除します`,
       icon: "question",
@@ -536,7 +542,7 @@ const ABRecDialog = (props: ABRecDialogPropsType) => {
         cancelMsgBox();
       }
     };
-    setMsgbox(msgbox);
+    setMsgbox(mbdata);
   };
 
   if (open === true && status.status === "loading") {
@@ -705,7 +711,7 @@ const ABRecDialog = (props: ABRecDialogPropsType) => {
           );
         })}
       </DialogActions>
-      {msgbox && <MessageBox {...msgbox} />}
+      <MessageBox {...msgbox} />
     </Dialog>
   );
 };

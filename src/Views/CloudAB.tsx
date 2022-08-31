@@ -7,7 +7,7 @@ import ABRecDialog, {
   ABRecEditStateType,
   ReformName
 } from "./ABRecord";
-import ABSettings from "./ABFunctions";
+import ABSettings, { ABSettingDialogPropsType } from "./ABFunctions";
 import CheckableEditableTable, {
   CETColumnType
 } from "../components/TableWithCheck";
@@ -42,7 +42,6 @@ import {
   isHomeAddress
 } from "../AppSettings";
 import LinearProgress from "@mui/material/LinearProgress";
-import { BrowserHistory } from "history";
 import DefPersonImg from "../assets/images/person.png";
 
 type ABInfoType = {
@@ -79,10 +78,10 @@ type RecdlgState = {
   };
 };
 
-function CABAddressList(props: {
+const CABAddressList = (props: {
   abook: ContentsPropsType;
   onEditRecord: (abookId: string, rec: RecordType) => void;
-}) {
+}) => {
   const user = useContext(UserContext);
   //const [loaded, setLoaded] = React.useState(false);
   const [rlcounter, setRlcounter] = React.useState(0);
@@ -376,90 +375,51 @@ function CABAddressList(props: {
       }
     }
     //console.log(`out address list:${props.abook.name}`);
-    // if( props.abook.name === 'temporary' ){
-    //   const element = document.getElementById('addrlist');
-    //   ReactDOM.render( cont, element );
-    //   return null;
-    // }
   } else {
     cont = <Box sx={{ width: "100%", mt: 20 }}>{<p>no data</p>}</Box>;
   }
 
   return cont;
-}
-
-export type CABCtrlBarProps = {
-  ref?: object;
-  history: BrowserHistory;
-  abook: ContentsPropsType;
-  children: ReactNode;
 };
 
-// typescript 導入したら class 宣言がややこしくなった
-class CABCtrlBar extends React.Component<CABCtrlBarProps, ContentsPropsType> {
-  settingdlg: React.RefObject<ABSettings>;
-  constructor(props: CABCtrlBarProps) {
-    super(props);
-    this.state = { ...props.abook };
-    this.settingdlg = React.createRef<ABSettings>();
+export type CABCtrlBarProps = {
+  abook: ContentsPropsType;
+  children?: ReactNode;
+};
+
+const CABCtrlBar = (props: {
+  abook: ContentsPropsType;
+  children?: ReactNode;
+}) => {
+  const [abook, setAbook] = React.useState({ ...props.abook });
+  const [settingdlg, setSettingDlg] = React.useState(false);
+
+  const user = useContext(UserContext);
+
+  if (props.abook.id !== abook.id) {
+    setAbook({ ...props.abook });
   }
-  tid: number = 0;
 
-  //static contextType = UserContext; ← typescript 導入前
-  // ↓ typescript 導入後　　こんなん分かるかー！
-  static contextType = UserContext;
-  context!: React.ContextType<typeof UserContext>;
-
-  setData = (data: ContentsPropsType) => {
-    if (data.tags && data.tags.length) {
-      if (this.tid) clearTimeout(this.tid);
-      this.tid = setTimeout(() => {
-        this.setState({ ...this.state, tags: data.tags });
-        this.tid = 0;
-      }, 1000);
-    } else {
-      if (this.state.command !== data.command) {
-        this.setState({ ...this.state, command: data.command });
-      } else {
-        //console.log(`setData(${JSON.stringify(data)})`);
-        this.setState({ ...data });
-      }
-    }
+  const openSetting = () => {
+    setSettingDlg(true);
   };
 
-  //settingdlg = useRef<ABSettings>(null);
-  changeSettings = (abook: ContentsPropsType) => {
-    let newval = { ...abook };
-    this.setState({
-      ...this.state,
-      name: abook.name,
-      color: abook.color,
-      icon: abook.icon,
-      use: abook.use
-    });
-    //this.setData( newval );
+  const saveSetting = (abook: ContentsPropsType) => {
+    setAbook({ ...abook });
   };
 
-  openSetting = () => {
-    if (this.settingdlg && this.settingdlg.current) {
-      this.settingdlg.current.handleOpen(
-        { ...this.state },
-        this.changeSettings
-      );
-    }
+  const addNewRecord = () => {
+    alert("新規追加　が選択された");
+
+    // todo
   };
 
-  addNewRecord = () => {
-    //alert("新規追加　が選択された");
-    this.setData({ ...this.state, command: "newrec" });
-  };
-
-  settingItems: PulldownMenuItem[] = [
+  const settingItems: PulldownMenuItem[] = [
     {
       text: "住所録の設定",
       icon: TuneIcon,
       handler: () => {
-        this.openSetting();
+        openSetting();
       }
     },
     {
@@ -500,136 +460,123 @@ class CABCtrlBar extends React.Component<CABCtrlBarProps, ContentsPropsType> {
     }
   ];
 
-  render() {
-    let controls = null;
+  let controls = <></>;
 
-    //console.log(`render()use:${this.state.use}`);
-    if (this.context.isUserLoggedIn() === false) {
-      controls = <span className="explain">ログインしてください</span>;
-    } else {
-      const cxAddBtn = "8em"; //[()+新規作成]
-      const cxGearBtn = "3em"; //歯車アイコン
-      const cxMiddle = `calc( 100% - calc( ${cxAddBtn} + ${cxGearBtn} ))`;
-      controls = (() => {
-        return this.state.id ? (
-          <>
-            <Box sx={{ width: "100%" }}>
-              <Grid container>
-                <Grid item width={cxAddBtn}>
-                  <Button
-                    variant="contained"
-                    sx={{ fontSize: "95%" }}
-                    onClick={(e) => {
-                      this.addNewRecord();
-                    }}
-                  >
-                    <PersonAddAlt1Icon />
-                    新規作成
-                  </Button>
-                </Grid>
-                <Grid item width={cxMiddle}>
-                  <Grid container columns={10}>
-                    <Grid item xs={4}>
-                      <Paper
-                        component="form"
-                        sx={{
-                          p: "2px 2px",
-                          mr: 1,
-                          display: "flex",
-                          alignItems: "center"
-                        }}
+  //console.log(`render()use:${this.state.use}`);
+  if (user.isUserLoggedIn() === false) {
+    controls = <span className="explain">ログインしてください</span>;
+  } else {
+    const cxAddBtn = "8em"; //[()+新規作成]
+    const cxGearBtn = "3em"; //歯車アイコン
+    const cxMiddle = `calc( 100% - calc( ${cxAddBtn} + ${cxGearBtn} ))`;
+
+    if (props.abook.id) {
+      console.log(`CABCtrlBar:rendering:${abook.name}`);
+      controls = (
+        <>
+          <Box sx={{ width: "100%" }}>
+            <Grid container>
+              <Grid item width={cxAddBtn}>
+                <Button
+                  variant="contained"
+                  sx={{ fontSize: "95%" }}
+                  onClick={(e) => {
+                    addNewRecord();
+                  }}
+                >
+                  <PersonAddAlt1Icon />
+                  新規作成
+                </Button>
+              </Grid>
+              <Grid item width={cxMiddle}>
+                <Grid container columns={10}>
+                  <Grid item xs={4}>
+                    <Paper
+                      component="form"
+                      sx={{
+                        p: "2px 2px",
+                        mr: 1,
+                        display: "flex",
+                        alignItems: "center"
+                      }}
+                    >
+                      <InputBase
+                        sx={{ ml: 1, flex: 1 }}
+                        placeholder="タグでフィルタ"
+                        inputProps={{ "aria-label": "search" }}
+                      />
+                      <IconButton
+                        type="submit"
+                        sx={{ p: "5px" }}
+                        aria-label="search"
                       >
-                        <InputBase
-                          sx={{ ml: 1, flex: 1 }}
-                          placeholder="タグでフィルタ"
-                          inputProps={{ "aria-label": "search" }}
-                        />
-                        <IconButton
-                          type="submit"
-                          sx={{ p: "5px" }}
-                          aria-label="search"
-                        >
-                          <ExpandCircleDownOutlinedIcon />
-                        </IconButton>
-                      </Paper>
-                    </Grid>
-                    <Divider />
-                    <Grid item xs={6}>
-                      <Paper
-                        component="form"
-                        sx={{
-                          p: "2px 2px",
-                          display: "flex",
-                          alignItems: "center"
-                        }}
+                        <ExpandCircleDownOutlinedIcon />
+                      </IconButton>
+                    </Paper>
+                  </Grid>
+                  <Divider />
+                  <Grid item xs={6}>
+                    <Paper
+                      component="form"
+                      sx={{
+                        p: "2px 2px",
+                        display: "flex",
+                        alignItems: "center"
+                      }}
+                    >
+                      <InputBase
+                        sx={{ ml: 1, flex: 1 }}
+                        placeholder="検索"
+                        inputProps={{ "aria-label": "search" }}
+                      />
+                      <IconButton
+                        type="submit"
+                        sx={{ p: "5px" }}
+                        aria-label="search"
                       >
-                        <InputBase
-                          sx={{ ml: 1, flex: 1 }}
-                          placeholder="検索"
-                          inputProps={{ "aria-label": "search" }}
-                        />
-                        <IconButton
-                          type="submit"
-                          sx={{ p: "5px" }}
-                          aria-label="search"
-                        >
-                          <SearchIcon />
-                        </IconButton>
-                      </Paper>
-                    </Grid>
+                        <SearchIcon />
+                      </IconButton>
+                    </Paper>
                   </Grid>
                 </Grid>
-                <Grid item width={cxGearBtn}>
-                  <PulldownMenu
-                    tipText="住所録の設定"
-                    popupId={"setting-menu"}
-                    icon={SettingsOutlinedIcon}
-                    items={this.settingItems}
-                  />
-                </Grid>
               </Grid>
-            </Box>
-            <ABSettings
-              ref={this.settingdlg}
-              abook={this.state}
-              user={this.context}
-            />
-          </>
-        ) : null;
-      })();
+              <Grid item width={cxGearBtn}>
+                <PulldownMenu
+                  tipText={`住所録の設定`}
+                  popupId={"setting-menu"}
+                  icon={SettingsOutlinedIcon}
+                  items={settingItems}
+                />
+              </Grid>
+            </Grid>
+          </Box>
+          <ABSettings
+            open={settingdlg}
+            abook={{ ...abook }}
+            onSave={saveSetting}
+            onClose={() => {
+              setSettingDlg(false);
+            }}
+          />
+        </>
+      );
+    } else {
+      controls = <>no id</>;
     }
-    // 制御エリアで設定した値をコンテンツに反映できるように、
-    // CABCtrlBarの下にコンテンツコンポーネントを置き、CABCtrlBarのrender()内で子供（コンテンツ）を
-    // 按配するようにした　つまり、下記 div id="contents-inner" はここでしないと、親子関係を結んだ
-    // 状態では外からはできないため
-    // ※ 単に {children} だと変更したpropsが渡せないので、下記のように { React.Children.map(...)} のようにした
-    const childrenWithProps = Children.map(this.props.children, (child) => {
-      switch (typeof child) {
-        case "string":
-          return child;
-        case "object":
-          return React.cloneElement(
-            child as React.ReactElement<{ abook: ContentsPropsType }>,
-            { abook: { ...this.state } }
-          );
-        default:
-          //console.log(`child type=${typeof child}`);
-          return null;
-      }
-    });
-    return (
-      <>
-        {controls}
-        {childrenWithProps}
-      </>
-    );
   }
-}
 
-function CABContents(props: {
+  return (
+    <>
+      {controls}
+      {props.children && props.children}
+    </>
+  );
+};
+
+const CABContents = (props: {
   abook: ContentsPropsType;
   onEditRecord: (abookId: string, rec: RecordType) => void;
-}) {
+}) => {
   const user = useContext(UserContext);
 
   let cont = null;
@@ -661,13 +608,14 @@ function CABContents(props: {
     );
   }
   return cont;
-}
+};
 
 export type CABEditCtrlBarProps = {
   rec: ABRecEditStateType;
   onEndEdit: () => void;
   children: ReactNode;
 };
+
 const CABEditCtrlBar = (props: CABEditCtrlBarProps) => {
   // const childrenWithProps = Children.map(props.children, (child) => {
   //   switch (typeof child) {

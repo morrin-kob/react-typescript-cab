@@ -32,6 +32,7 @@ import Dialog from "@mui/material/Dialog";
 import DialogTitle from "@mui/material/DialogTitle";
 import DialogActions from "@mui/material/DialogActions";
 import DialogContent from "@mui/material/DialogContent";
+import MessageBox, { MessageBoxProps } from "../components/MessageBox";
 import ButtonBase from "@mui/material/ButtonBase";
 import CloseIcon from "@mui/icons-material/Close";
 import Checkbox from "@mui/material/Checkbox";
@@ -68,15 +69,11 @@ import {
 } from "../components/EditParts";
 import { ABIcon, iconlist } from "./ABIcons";
 
-type ABSettingDialogPropsType = {
-  abook: ContentsPropsType;
-  user: UserContextType;
-};
-
-type ABSettingDialogStateType = {
+export type ABSettingDialogPropsType = {
   open: boolean;
-  abname: string;
   abook: ContentsPropsType;
+  onSave: (abook: ContentsPropsType) => void;
+  onClose: () => void;
 };
 
 type DlgButtonProps = {
@@ -95,44 +92,90 @@ type DlgButtonProps = {
 //
 // 住所録の設定
 //
-export default class ABSettings extends React.Component<
-  ABSettingDialogPropsType,
-  ABSettingDialogStateType
-> {
-  onSave: (abook: ContentsPropsType) => void;
-  constructor(props: ABSettingDialogPropsType) {
-    super(props);
-    //    this.user = useContext(UserContext);
-    this.state = {
-      open: false,
-      abname: props.abook.name,
-      abook: { ...props.abook }
-    };
+const ABSettings = (props: ABSettingDialogPropsType) => {
+  const [open, setOpen] = React.useState(props.open);
+  const [saving, setSaving] = React.useState(false);
+  const [settings, setSettings] = React.useState<ContentsPropsType>({
+    ...props.abook
+  });
+  const [msgbox, setMsgbox] = React.useState<MessageBoxProps>({
+    open: false,
+    caption: "",
+    message: ""
+  });
+
+  const cancelMsgBox = () => {
+    setMsgbox({ ...msgbox, open: false });
+  };
+
+  const user = useContext(UserContext);
+
+  if (props.abook.id !== settings.id) {
+    setSettings({ ...props.abook });
+    setOpen(props.open);
+  }
+  if (open !== props.open) {
+    setOpen(props.open);
   }
 
-  handleOpen = (
-    abook: ContentsPropsType,
-    onChange: (abook: ContentsPropsType) => void
-  ) => {
-    this.onSave = onChange;
-    this.setState({ open: true, abname: abook.name, abook: abook });
+  const handleClose = () => {
+    setOpen(false);
+    props.onClose();
   };
 
-  handleClose = () => {
-    this.setState({ ...this.state, open: false });
-  };
-  handleSave = () => {
-    this.onSave(this.state.abook);
-    this.setState({ ...this.state, open: false });
+  const handleSave = () => {
+    setSaving(true);
+
+    let url = `${user.getEpt()}/group/${props.abook.id}`;
+    let params = {
+      atk: user.getAToken(),
+      ept: user.getEpm(),
+      uag: user.getUag()
+    };
+    if ("etag" in props.abook) {
+      params["If-Match"] = props.abook["etag"];
+      console.log(`etag:${props.abook["etag"]}`);
+    }
+    ajaxPost(
+      url,
+      params,
+      (json) => {
+        if (json["data"]) {
+          props.onSave(json["data"]);
+          handleClose();
+        } else {
+          let error: string =
+            json["error"] || json["statusText"] || "load error";
+          let mbinfo: MessageBoxProps = {
+            open: true,
+            caption: "更新エラー",
+            message: error,
+            icon: "error",
+            options: [
+              {
+                text: "OK",
+                handler: () => {
+                  cancelMsgBox();
+                }
+              }
+            ],
+            onCancel: () => {
+              cancelMsgBox();
+            }
+          };
+        }
+      },
+      "PUT"
+    );
   };
 
-  onChangeField = (field: string, value: string) => {
-    let newVal = { ...this.state.abook };
+  const onChangeField = (field: string, value: string) => {
+    let newVal = { ...settings };
     newVal[field] = value;
-    this.setState({ ...this.state, abook: newVal });
+    setSettings(newVal);
   };
 
-  colorlist: string[] = [
+  const colorlist: string[] = [
     "d7000f",
     "e16600",
     "ffa700",
@@ -152,152 +195,147 @@ export default class ABSettings extends React.Component<
     "8c8c00"
   ];
 
-  getCurrABColor = () => {
-    return this.state && this.state.abook.color
-      ? this.state.abook.color.toLowerCase()
-      : this.colorlist[0];
+  const getCurrABColor = () => {
+    return settings.color ? settings.color.toLowerCase() : colorlist[0];
   };
 
-  handleSetColor = (col: string) => {
-    if (this.getCurrABColor() !== col) {
-      this.onChangeField("color", col);
+  const handleSetColor = (col: string) => {
+    if (getCurrABColor() !== col) {
+      onChangeField("color", col);
     }
   };
 
-  getCurrABIcon = () => {
-    return this.state && this.state.abook.icon ? this.state.abook.icon : "book";
+  const getCurrABIcon = () => {
+    return settings.icon ? settings.icon : "book";
   };
-  handleSetIcon = (icon: string) => {
-    if (this.getCurrABIcon() !== icon) {
-      this.onChangeField("icon", icon);
+
+  const handleSetIcon = (icon: string) => {
+    if (getCurrABIcon() !== icon) {
+      onChangeField("icon", icon);
     }
   };
 
-  render() {
-    const buttons: DlgButtonProps[] = [
-      { caption: "保存", color: "success", onclick: this.handleSave },
-      { caption: "閉じる", color: "primary", onclick: this.handleClose }
-    ];
+  const buttons: DlgButtonProps[] = [
+    { caption: "保存", color: "success", onclick: handleSave },
+    { caption: "閉じる", color: "primary", onclick: handleClose }
+  ];
 
-    let cont = <></>;
+  let cxDlg: string = isMobile ? "calc( 100vw )" : "calc( 80vw )";
 
-    let cxDlg: string = isMobile ? "calc( 100vw )" : "calc( 80vw )";
+  let cxBox = 36;
+  let cyBox = 36;
+  let cbareaWidth = cxBox * 8;
 
-    let cxBox = 36;
-    let cyBox = 36;
-    let cbareaWidth = cxBox * 8;
+  return (
+    <Dialog open={open} onClose={handleClose}>
+      <DialogTitle sx={{ width: cxDlg, minWidth: "20em", maxWidth: 600 }}>
+        住所録の設定 - {props.abook.name}
+        <IconButton
+          aria-label="close"
+          onClick={handleClose}
+          sx={{
+            color: "white",
+            position: "absolute",
+            right: 8,
+            top: 8
+          }}
+        >
+          <CloseIcon />
+        </IconButton>
+      </DialogTitle>
+      <DialogContent>
+        <EditFieldTitle title="住所録名変更" />
+        <FieldEditBox
+          label=""
+          field="name"
+          rec={settings}
+          onChangeField={onChangeField}
+        />
+        {/* --------------------------------- */}
+        <EditFieldTitle title="住所録カラー変更" />
+        <Grid container sx={{ width: cbareaWidth }} columns={8}>
+          {colorlist.map((col) => (
+            <Grid item xs={1}>
+              <ColorBox
+                width={cxBox}
+                height={cyBox}
+                color={col}
+                checked={getCurrABColor() === col}
+                onClick={handleSetColor}
+              />
+            </Grid>
+          ))}
+        </Grid>
+        {/* --------------------------------- */}
+        <EditFieldTitle title="住所録アイコンの変更" />
+        <Grid container sx={{ width: cbareaWidth }} columns={8}>
+          {Object.keys(iconlist).map((key) => (
+            <Grid item xs={1}>
+              <ColorBox
+                width={cxBox}
+                height={cyBox}
+                color="transparent"
+                abicon={key}
+                selected={getCurrABIcon() === key}
+                icon_sx={{ color: getCurrABColor() }}
+                onClick={handleSetIcon}
+              />
+            </Grid>
+          ))}
+        </Grid>
 
-    return (
-      <Dialog open={this.state.open} onClose={this.handleClose}>
-        <DialogTitle sx={{ width: cxDlg, minWidth: "20em", maxWidth: 600 }}>
-          住所録の設定 - {this.state.abname}
-          <IconButton
-            aria-label="close"
-            onClick={this.handleClose}
-            sx={{
-              color: "white",
-              position: "absolute",
-              right: 8,
-              top: 8
+        {/* --------------------------------- */}
+        <EditFieldTitle title="リスト表示形式" />
+
+        <FormControl>
+          <FormLabel id="listtype-label">
+            住所録を表示する形式を選択して下さい。
+          </FormLabel>
+          <RadioGroup
+            aria-labelledby="listtype-label"
+            defaultValue="private"
+            value={settings.use}
+            name="radio-buttons-group"
+            onChange={(e) => {
+              onChangeField("use", e.target.value);
             }}
           >
-            <CloseIcon />
-          </IconButton>
-        </DialogTitle>
-        <DialogContent>
-          {cont}
-          <EditFieldTitle title="住所録名変更" />
-          <FieldEditBox
-            label=""
-            field="name"
-            rec={this.state.abook}
-            onChangeField={this.onChangeField}
-          />
-          {/* --------------------------------- */}
-          <EditFieldTitle title="住所録カラー変更" />
-          <Grid container sx={{ width: cbareaWidth }} columns={8}>
-            {this.colorlist.map((col) => (
-              <Grid item xs={1}>
-                <ColorBox
-                  width={cxBox}
-                  height={cyBox}
-                  color={col}
-                  checked={this.getCurrABColor() === col}
-                  onClick={this.handleSetColor}
-                />
-              </Grid>
-            ))}
-          </Grid>
-          {/* --------------------------------- */}
-          <EditFieldTitle title="住所録アイコンの変更" />
-          <Grid container sx={{ width: cbareaWidth }} columns={8}>
-            {Object.keys(iconlist).map((key) => (
-              <Grid item xs={1}>
-                <ColorBox
-                  width={cxBox}
-                  height={cyBox}
-                  color="transparent"
-                  abicon={key}
-                  selected={this.getCurrABIcon() === key}
-                  icon_sx={{ color: this.getCurrABColor() }}
-                  onClick={this.handleSetIcon}
-                />
-              </Grid>
-            ))}
-          </Grid>
-
-          {/* --------------------------------- */}
-          <EditFieldTitle title="リスト表示形式" />
-
-          <FormControl>
-            <FormLabel id="listtype-label">
-              住所録を表示する形式を選択して下さい。
-            </FormLabel>
-            <RadioGroup
-              aria-labelledby="listtype-label"
-              defaultValue="private"
-              value={this.state.abook.use}
-              name="radio-buttons-group"
-              onChange={(e) => {
-                this.onChangeField("use", e.target.value);
-              }}
+            <FormControlLabel
+              value="private"
+              control={<Radio />}
+              label={
+                <Box style={{ fontSize: "90%" }}>
+                  標準（氏名、写真、住所、電話番号を表示）
+                </Box>
+              }
+            />
+            <FormControlLabel
+              value="corp"
+              control={<Radio />}
+              label={
+                <Box style={{ fontSize: "90%" }}>
+                  会社（氏名、勤務先、住所、電話番号を表示）
+                </Box>
+              }
+            />
+          </RadioGroup>
+        </FormControl>
+      </DialogContent>
+      <Divider />
+      <DialogActions>
+        {buttons.map((button) => {
+          return (
+            <Button
+              color={button.color}
+              variant="contained"
+              onClick={button.onclick}
             >
-              <FormControlLabel
-                value="private"
-                control={<Radio />}
-                label={
-                  <Box style={{ fontSize: "90%" }}>
-                    標準（氏名、写真、住所、電話番号を表示）
-                  </Box>
-                }
-              />
-              <FormControlLabel
-                value="corp"
-                control={<Radio />}
-                label={
-                  <Box style={{ fontSize: "90%" }}>
-                    会社（氏名、勤務先、住所、電話番号を表示）
-                  </Box>
-                }
-              />
-            </RadioGroup>
-          </FormControl>
-        </DialogContent>
-        <Divider />
-        <DialogActions>
-          {buttons.map((button) => {
-            return (
-              <Button
-                color={button.color}
-                variant="contained"
-                onClick={button.onclick}
-              >
-                {button.caption}
-              </Button>
-            );
-          })}
-        </DialogActions>
-      </Dialog>
-    );
-  }
-}
+              {button.caption}
+            </Button>
+          );
+        })}
+      </DialogActions>
+    </Dialog>
+  );
+};
+export default ABSettings;

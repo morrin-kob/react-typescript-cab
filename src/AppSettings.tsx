@@ -195,6 +195,8 @@ const ajaxPost = (
         headers["X-atk"] = params[key];
       } else if (key === "ept") {
         headers["X-ept"] = params[key];
+      } else if (key === "If-Match") {
+        headers["If-Match"] = params[key];
       } else {
         data[key] = params[key];
       }

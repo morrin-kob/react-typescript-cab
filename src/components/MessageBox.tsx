@@ -22,6 +22,7 @@ type OptionsType = {
   handler: () => void;
 };
 export type MessageBoxProps = {
+  open: boolean;
   caption: string;
   message: string;
   icon?:
