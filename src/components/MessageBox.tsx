@@ -42,7 +42,11 @@ type IconInfoType = {
 };
 
 const MessageBox = (props: MessageBoxProps) => {
-  const [open, setOpen] = React.useState(true);
+  const [open, setOpen] = React.useState(props.open);
+
+  if (props.open !== open) {
+    setOpen(props.open);
+  }
 
   const handleClickOpen = () => {
     setOpen(true);

@@ -88,44 +88,65 @@ function reformResponse(resp: any) {
       data["statusMessage"] ||
       data["statusText"] ||
       data["message"] ||
-      `Error: something is wrong(${JSON.stringify(resp)})`;
+      `Error: something is wrong(${JSON.stringify(data)})`;
   }
   data["statusCode"] = statusCode;
   return data;
 }
 
-//
-// 非同期処理
-//
-const ajaxGet = (
-  endpoint: string,
-  params: Object,
-  callbackfunc: (data: {}) => void
-) => {
-  let url = endpoint;
+const reformParams = (method: string, params: {}, headers: {}, data: {}) => {
   let paramlist = "";
-  let headers = {};
+
   if (params) {
     for (const key of Object.keys(params)) {
       if (key === "atk") {
         headers["X-atk"] = params[key];
       } else if (key === "ept") {
         headers["X-ept"] = params[key];
+      } else if (key === "If-Match") {
+        headers["If-Match"] = params[key];
       } else {
-        if (paramlist.length) paramlist += "&";
-        paramlist += key + "=";
-        paramlist += params[key];
+        if (method !== "GET" && key !== "uag") {
+          data[key] = params[key];
+        } else {
+          if (paramlist.length) paramlist += "&";
+          paramlist += `${key}=${params[key]}`;
+        }
       }
     }
-    if (paramlist.length) {
-      url += `?${paramlist}`;
-    }
+  }
+  return paramlist;
+};
+
+const httpFetch = (
+  url: string,
+  method: "GET" | "POST" | "PUT" | "DELETE",
+  params: {},
+  postdata: {},
+  callbackfunc: (data: {}) => void
+) => {
+  let headers = {};
+  if (method !== "GET") {
+    headers["Content-Type"] = "application/json";
+  }
+
+  let paramlist = reformParams(method, params, headers, postdata);
+
+  if (paramlist.length) {
+    url += `?${paramlist}`;
+  }
+
+  let senddata = undefined;
+
+  if (method !== "GET") {
+    senddata = JSON.stringify(postdata);
   }
 
   fetch(url, {
-    method: "GET",
+    method: method,
     mode: "cors",
-    headers: headers
+    headers: headers,
+    body: senddata
   })
     .then((res) => {
       return res.json();
@@ -134,13 +155,8 @@ const ajaxGet = (
       callbackfunc(json);
     })
     .catch((e) => {
-      if (!e) {
-        callbackfunc({
-          status: "error",
-          error: "fail to fetch. don't know why"
-        });
-      } else if (typeof e === "string") {
-        callbackfunc({ status: "error", error: e });
+      if (typeof e === "string") {
+        callbackfunc({ error: e });
       } else {
         callbackfunc(reformResponse(e));
       }
@@ -152,23 +168,10 @@ const ajaxGet = (
 //
 const fetchGet = async (endpoint: string, params: Object) => {
   let url = endpoint;
-  let paramlist = "";
   let headers = {};
-  if (params) {
-    for (const key of Object.keys(params)) {
-      if (key === "atk") {
-        headers["X-atk"] = params[key];
-      } else if (key === "ept") {
-        headers["X-ept"] = params[key];
-      } else {
-        if (paramlist.length) paramlist += "&";
-        paramlist += key + "=";
-        paramlist += params[key];
-      }
-    }
-    if (paramlist.length) {
-      url += `?${paramlist}`;
-    }
+  let paramlist = reformParams("GET", params, headers, {});
+  if (paramlist.length) {
+    url += `?${paramlist}`;
   }
 
   const response = await fetch(url, {
@@ -179,58 +182,9 @@ const fetchGet = async (endpoint: string, params: Object) => {
   return response.json();
 };
 
-const ajaxPost = (
-  url: string,
-  params: {},
-  callbackfunc: (data: {}) => void,
-  method: "POST" | "PUT" | "DELETE" = "POST"
-) => {
-  let headers = {
-    "Content-Type": "application/json"
-  };
-  let data = {};
-  if (params) {
-    for (const key of Object.keys(params)) {
-      if (key === "atk") {
-        headers["X-atk"] = params[key];
-      } else if (key === "ept") {
-        headers["X-ept"] = params[key];
-      } else if (key === "If-Match") {
-        headers["If-Match"] = params[key];
-      } else {
-        data[key] = params[key];
-      }
-    }
-  }
-
-  const sendData = JSON.stringify(data);
-  //console.log(`post: ${url}\ndata:${sendData}\nmethod:${method}`);
-  fetch(url, {
-    method: method,
-    //  mode: "cors",
-    headers: headers,
-    body: sendData
-  })
-    .then((res) => {
-      return res.json();
-    })
-    .then((json) => {
-      callbackfunc(json);
-    })
-    .catch((e) => {
-      console.log(`catch:e:${typeof e}`);
-      if (typeof e === "string") {
-        callbackfunc({ error: e });
-      } else {
-        callbackfunc(reformResponse(e));
-      }
-    });
-};
-
 export {
   AppVal,
-  ajaxGet,
-  ajaxPost,
+  httpFetch,
   fetchGet,
   reformText,
   reformResponse,

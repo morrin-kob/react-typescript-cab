@@ -1,6 +1,7 @@
 import * as React from "react";
 import { useContext, ReactNode, Children } from "react";
 import { UserContext, UserContextType } from "../Account";
+import PopupProgress from "../components/PopupProgress";
 import { useQuery } from "react-query";
 import ABRecDialog, {
   RecordType,
@@ -45,15 +46,7 @@ import FormLabel from "@mui/material/FormLabel";
 import PulldownMenu, {
   PulldownMenuItem
 } from "../components/PulldownMenuButton";
-import {
-  AppVal,
-  ajaxGet,
-  ajaxPost,
-  fetchGet,
-  reformResponse,
-  ContentsPropsType,
-  isHomeAddress
-} from "../AppSettings";
+import { AppVal, ContentsPropsType, isHomeAddress } from "../AppSettings";
 import LinearProgress from "@mui/material/LinearProgress";
 import { useRef } from "react";
 import { BrowserHistory } from "history";
@@ -123,6 +116,38 @@ const ABSettings = (props: ABSettingDialogPropsType) => {
     props.onClose();
   };
 
+  const savingError = (json: {}) => {
+    let error: string = json["error"] || json["statusText"] || "load error";
+    let mbinfo: MessageBoxProps = {
+      open: true,
+      caption: "更新エラー",
+      message: error,
+      icon: "error",
+      options: [
+        {
+          text: "OK",
+          handler: () => {
+            cancelMsgBox();
+          }
+        }
+      ],
+      onCancel: () => {
+        cancelMsgBox();
+      }
+    };
+    setMsgbox(mbinfo);
+  };
+
+  const onSaveSetting = (json: {}) => {
+    setSaving(false);
+    if (json["data"]) {
+      props.onSave(json["data"]);
+      handleClose();
+    } else {
+      savingError(json);
+    }
+  };
+
   const handleSave = () => {
     setSaving(true);
 
@@ -134,38 +159,16 @@ const ABSettings = (props: ABSettingDialogPropsType) => {
     };
     if ("etag" in props.abook) {
       params["If-Match"] = props.abook["etag"];
-      console.log(`etag:${props.abook["etag"]}`);
     }
-    ajaxPost(
+
+    user.FetchWithRefreshedRetry(
       url,
+      "PUT",
       params,
+      { ...settings },
       (json) => {
-        if (json["data"]) {
-          props.onSave(json["data"]);
-          handleClose();
-        } else {
-          let error: string =
-            json["error"] || json["statusText"] || "load error";
-          let mbinfo: MessageBoxProps = {
-            open: true,
-            caption: "更新エラー",
-            message: error,
-            icon: "error",
-            options: [
-              {
-                text: "OK",
-                handler: () => {
-                  cancelMsgBox();
-                }
-              }
-            ],
-            onCancel: () => {
-              cancelMsgBox();
-            }
-          };
-        }
-      },
-      "PUT"
+        onSaveSetting(json);
+      }
     );
   };
 
@@ -335,6 +338,8 @@ const ABSettings = (props: ABSettingDialogPropsType) => {
           );
         })}
       </DialogActions>
+      <PopupProgress open={saving} type="circle" />
+      <MessageBox {...msgbox} />
     </Dialog>
   );
 };

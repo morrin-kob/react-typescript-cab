@@ -21,7 +21,7 @@ Typescript で書き換えた。
  -----------------------------------------------*/
 import * as React from "react";
 import { useState, createContext } from "react";
-import { ajaxGet, ajaxPost } from "./AppSettings";
+import { httpFetch } from "./AppSettings";
 
 type ABInfoType = {
   code: string | null;
@@ -90,10 +90,11 @@ export type UserContextType = {
       r_token: string;
     }) => void
   ) => void;
-  RefreshAndRetry: (
+  FetchWithRefreshedRetry: (
     url: string,
-    method: string,
+    method: "GET" | "POST" | "PUT" | "DELETE",
     params: {},
+    postdata: {},
     callbackfunc: (data: {}) => void
   ) => void;
 };
@@ -174,10 +175,11 @@ export const UserContext = createContext<UserContextType>({
       r_token: string;
     }) => void
   ) => {},
-  RefreshAndRetry: (
+  FetchWithRefreshedRetry: (
     url: string,
     method: "GET" | "POST" | "PUT" | "DELETE",
     params: {},
+    postdata: {},
     callbackfunc: (data: {}) => void
   ) => {}
 });
@@ -285,15 +287,16 @@ export const UserContextProvider: React.FC<{ children: React.ReactNode }> = ({
   ) => {
     if (!user || !user.isLoggInable) return false;
     if (!user.isLoggedIn) {
-      ajaxPost(
+      httpFetch(
         ept + "/token",
+        "POST",
         {
-          uag: uag,
           ept: eps,
           scd: scd,
           cid: cid,
           csr: csr
         },
+        { urg: uag },
         (resp) => {
           //console.log(`resp:${JSON.stringify(resp)}`);
           if ("data" in resp) {
@@ -306,7 +309,7 @@ export const UserContextProvider: React.FC<{ children: React.ReactNode }> = ({
               ept: eps,
               uag: uag
             };
-            ajaxGet(`ept/homeaddresses/list`, params, (json) => {
+            httpFetch(`ept/homeaddresses/list`, "GET", params, {}, (json) => {
               let userName = email;
               if (json && "data" in json) {
                 userName = json["data"][0]["lastname"];
@@ -393,15 +396,16 @@ export const UserContextProvider: React.FC<{ children: React.ReactNode }> = ({
       r_token: string;
     }) => void
   ) => {
-    ajaxPost(
+    httpFetch(
       getEpt() + "/token",
+      "POST",
       {
-        uag: getUag(),
         ept: getEps(),
         rtk: getRToken(),
         cid: getCid(),
         csr: getCsr()
       },
+      { uag: getUag() },
       (resp) => {
         let resdata = {
           a_token: "",
@@ -434,22 +438,32 @@ export const UserContextProvider: React.FC<{ children: React.ReactNode }> = ({
       }
     );
   };
-  const RefreshAndRetry = (
+  const FetchWithRefreshedRetry = (
     url: string,
     method: "GET" | "POST" | "PUT" | "DELETE",
     params: {},
+    postdata: {},
     callbackfunc: (data: {}) => void
   ) => {
-    RefreshToken((res) => {
-      if (res && "a_token" in res) {
-        params["atk"] = res.a_token;
-        const func = method === "GET" ? ajaxGet : ajaxPost;
-        func(url, params, (json: {}) => {
+    httpFetch(url, method, params, postdata, (json: {}) => {
+      if ("data" in json === false) {
+        if (parseInt(json["statusCode"], 10) === 401) {
+          RefreshToken((res) => {
+            if (res && "a_token" in res) {
+              params["atk"] = res.a_token;
+              httpFetch(url, method, params, postdata, (json: {}) => {
+                callbackfunc(json);
+              });
+            } else {
+              Logoff();
+              callbackfunc({ statusCode: 500, error: "something is wrong" });
+            }
+          });
+        } else {
           callbackfunc(json);
-        });
+        }
       } else {
-        Logoff();
-        callbackfunc({ statusCode: 500, error: "something is wrong" });
+        callbackfunc(json);
       }
     });
   };
@@ -477,7 +491,7 @@ export const UserContextProvider: React.FC<{ children: React.ReactNode }> = ({
         Login,
         Logoff,
         RefreshToken,
-        RefreshAndRetry
+        FetchWithRefreshedRetry
       }}
     >
       {children}

@@ -4,8 +4,6 @@ import "../App.css";
 import { UserContext } from "../Account";
 import {
   AppVal,
-  ajaxGet,
-  ajaxPost,
   fetchGet,
   reformResponse,
   ContentsPropsType,
@@ -13,7 +11,7 @@ import {
   isHomeAddress
 } from "../AppSettings";
 import { useNavigate } from "react-router-dom";
-import { useQuery } from "react-query";
+import { useQuery, useQueryClient } from "react-query";
 
 import Box from "@mui/material/Box";
 import Drawer from "@mui/material/Drawer";
@@ -71,16 +69,19 @@ function CABBookList(props: {
   const user = useContext(UserContext);
   const [rlcounter, setRlcounter] = React.useState(0);
 
+  const queryClient = useQueryClient();
+
+  let params = {
+    atk: user.getAToken(),
+    ept: user.getEpm(),
+    uag: user.getUag()
+  };
+
   const { isLoading, isFetching, isError, data, error } = useQuery(
     "groups_list",
     () => {
       let endpoint = `${user.getEpt()}/groups/list`;
 
-      let params = {
-        atk: user.getAToken(),
-        ept: user.getEpm(),
-        uag: user.getUag()
-      };
       return fetchGet(endpoint, params);
     },
     { staleTime: 3000, cacheTime: 1000000 }
@@ -99,6 +100,8 @@ function CABBookList(props: {
       if (parseInt(data["statusCode"], 10) === 401) {
         user.RefreshToken((res: {}) => {
           if (res["a_token"]) {
+            params["atk"] = res["a_token"];
+            queryClient.resetQueries("groups_list");
             setRlcounter(rlcounter + 1);
           }
         });
@@ -220,24 +223,16 @@ function CABSidebar(props: {
       ept: user.getEpm(),
       uag: user.getUag()
     };
-    ajaxGet(endpoint, params, (json) => {
-      //console.log(`get <group:>${JSON.stringify(json)}`);
-      if ("statusCode" in json && parseInt(json["statusCode"], 10) === 401) {
-        user.RefreshAndRetry(endpoint, "GET", params, (json: {}) => {
-          if ("data" in json) {
-            setABook({ ...json["data"] });
-          } else {
-            props.params.abId = "";
-            setABook({ ...abook, id: "" });
-          }
-        });
-      } else if ("data" in json) {
+
+    user.FetchWithRefreshedRetry(endpoint, "GET", params, {}, (json) => {
+      if ("data" in json) {
         setABook({ ...json["data"] });
       } else {
         props.params.abId = "";
         setABook({ ...abook, id: "" });
       }
     });
+
     return <></>;
   }
   return (

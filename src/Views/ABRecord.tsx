@@ -6,6 +6,7 @@ import Dialog from "@mui/material/Dialog";
 import DialogTitle from "@mui/material/DialogTitle";
 import DialogActions from "@mui/material/DialogActions";
 import DialogContent from "@mui/material/DialogContent";
+import PopupProgress from "../components/PopupProgress";
 import ButtonBase from "@mui/material/ButtonBase";
 import Button from "@mui/material/Button";
 import Box from "@mui/material/Box";
@@ -37,13 +38,7 @@ import RemoveIcon from "@mui/icons-material/Remove";
 import Fab from "@mui/material/Fab";
 import ManageSearchIcon from "@mui/icons-material/ManageSearch";
 
-import {
-  AppVal,
-  ajaxGet,
-  ajaxPost,
-  ContentsPropsType,
-  isHomeAddress
-} from "../AppSettings";
+import { AppVal, ContentsPropsType, isHomeAddress } from "../AppSettings";
 import CircularProgress from "@mui/material/CircularProgress";
 import { SvgIcon } from "@mui/material";
 import DefPersonImg from "../assets/images/person.png";
@@ -155,7 +150,7 @@ type ABRecDialogPropsType = {
   user: UserContextType;
   abook: ContentsPropsType;
   onEdit: (abookId: string, rec: RecordType) => void;
-  onDelete: (abookId: string, rec: RecordType) => void;
+  onDeleted: (abookId: string, rec: RecordType) => void;
   onCopy: (abookId: string, rec: RecordType) => void;
   onSend: (abookId: string, rec: RecordType) => void;
   onClose: () => void;
@@ -464,16 +459,8 @@ const loadRecord = (
     uag: user.getUag()
   };
 
-  ajaxGet(url, params, (json) => {
-    if ("data" in json) {
-      onLoad(json);
-    } else {
-      if ("statusCode" in json && parseInt(json["statusCode"], 10) === 401) {
-        user.RefreshAndRetry(url, "GET", params, onLoad);
-      } else {
-        onLoad(json);
-      }
-    }
+  user.FetchWithRefreshedRetry(url, "GET", params, {}, (json) => {
+    onLoad(json);
   });
 };
 
@@ -492,6 +479,7 @@ const ABRecDialog = (props: ABRecDialogPropsType) => {
     text: ""
   });
   const [recdata, setRecData] = React.useState({ id: "" });
+  const [progress, setProgress] = React.useState(false);
   const [msgbox, setMsgbox] = React.useState<MessageBoxProps>({
     open: false,
     caption: "",
@@ -499,6 +487,32 @@ const ABRecDialog = (props: ABRecDialogPropsType) => {
   });
 
   const user = useContext(UserContext);
+
+  const cancelMsgBox = () => {
+    setMsgbox({ ...msgbox, open: false });
+  };
+
+  const dispError = (json: {}) => {
+    let error: string = json["error"] || json["statusText"] || "load error";
+    let mbinfo: MessageBoxProps = {
+      open: true,
+      caption: "削除に失敗しました",
+      message: error,
+      icon: "error",
+      options: [
+        {
+          text: "OK",
+          handler: () => {
+            cancelMsgBox();
+          }
+        }
+      ],
+      onCancel: () => {
+        cancelMsgBox();
+      }
+    };
+    setMsgbox(mbinfo);
+  };
 
   const handleClose = () => {
     setOpen(false);
@@ -512,14 +526,33 @@ const ABRecDialog = (props: ABRecDialogPropsType) => {
   };
 
   const execDelete = () => {
-    setOpen(false);
-    console.log(`Delete:${JSON.stringify(recdata)}`);
-    props.onDelete(props.abook.id, recdata);
-    //this.props.onDelete(this.props.abook.id, this.state.data);
-  };
+    setProgress(true);
 
-  const cancelMsgBox = () => {
-    setMsgbox({ ...msgbox, open: false });
+    let url = `${user.getEpt()}/address/${props.recid}`;
+    let params = {
+      atk: user.getAToken(),
+      ept: user.getEpm(),
+      uag: user.getUag()
+    };
+    if ("etag" in recdata) {
+      params["If-Match"] = recdata["etag"];
+    }
+    user.FetchWithRefreshedRetry(
+      url,
+      "DELETE",
+      params,
+      { id: props.recid },
+      (json) => {
+        setProgress(false);
+        if ("data" in json) {
+          setOpen(false);
+          props.onClose();
+          props.onDeleted(recdata.id, json["data"]);
+        } else {
+          dispError(json);
+        }
+      }
+    );
   };
 
   const handleDelete = () => {
@@ -712,6 +745,7 @@ const ABRecDialog = (props: ABRecDialogPropsType) => {
         })}
       </DialogActions>
       <MessageBox {...msgbox} />
+      <PopupProgress open={progress} type="circle" />
     </Dialog>
   );
 };

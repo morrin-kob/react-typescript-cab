@@ -34,8 +34,6 @@ import PulldownMenu, {
 } from "../components/PulldownMenuButton";
 import {
   AppVal,
-  ajaxGet,
-  ajaxPost,
   fetchGet,
   reformResponse,
   ContentsPropsType,

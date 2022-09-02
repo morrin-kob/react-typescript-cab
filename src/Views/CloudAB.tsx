@@ -1,7 +1,7 @@
 import * as React from "react";
 import { useContext, ReactNode, Children } from "react";
 import { UserContext, UserContextType } from "../Account";
-import { useQuery } from "react-query";
+import { useQuery, useQueryClient } from "react-query";
 import ABRecDialog, {
   RecordType,
   ABRecEditStateType,
@@ -34,8 +34,6 @@ import PulldownMenu, {
 } from "../components/PulldownMenuButton";
 import {
   AppVal,
-  ajaxGet,
-  ajaxPost,
   fetchGet,
   reformResponse,
   ContentsPropsType,
@@ -92,6 +90,12 @@ const CABAddressList = (props: {
   const [page, setPage] = React.useState(0);
   const [rowsPerPage, setRowsPerPage] = React.useState(25);
 
+  let params = {
+    atk: user.getAToken(),
+    ept: user.getEpm(),
+    uag: user.getUag()
+  };
+  const queryClient = useQueryClient();
   const { isLoading, isFetching, isError, data, error } = useQuery(
     props.abook.id,
     () => {
@@ -103,11 +107,6 @@ const CABAddressList = (props: {
       } else {
         url += `/addresses/${props.abook.id}/list`;
       }
-      let params = {
-        atk: user.getAToken(),
-        ept: user.getEpm(),
-        uag: user.getUag()
-      };
       return fetchGet(url, params);
     },
     { staleTime: 3000, cacheTime: 1000000 }
@@ -137,8 +136,15 @@ const CABAddressList = (props: {
     setRecdlg({ open: true, rec: { id: key, name: label } });
   };
 
-  const onDeleteRecord = (abid: string, rec: RecordType) => {
+  const onRecordDeleted = (abid: string, rec: RecordType) => {
+    queryClient.resetQueries(props.abook.id);
+
     closeRecDialog();
+  };
+
+  // plural
+  const DeleteRecords = (sels: readonly string[]) => {
+    alert(`削除:${JSON.stringify(sels)}`);
   };
 
   const onCopyRecord = (abid: string, rec: RecordType) => {};
@@ -162,14 +168,16 @@ const CABAddressList = (props: {
       if (parseInt(data["statusCode"], 10) === 401) {
         user.RefreshToken((res: {}) => {
           if (res["a_token"]) {
+            params["atk"] = res["a_token"];
             setRlcounter(rlcounter + 1);
+            queryClient.resetQueries(props.abook.id);
           }
         });
       }
       cont = get_liner_Progress();
     } else {
       abinfo.addressData = data["data"];
-      console.log(`loaded:${props.abook.name}`);
+      //console.log(`loaded:${props.abook.name}`);
 
       const columns_home: CETColumnType[] = [
         // : GridColDef[]
@@ -349,9 +357,7 @@ const CABAddressList = (props: {
               checkTarget={{
                 icon: DeleteIcon,
                 commandTip: "削除",
-                onClick: (sels: readonly string[]) => {
-                  alert("削除");
-                }
+                onClick: DeleteRecords
               }}
             />
 
@@ -362,7 +368,7 @@ const CABAddressList = (props: {
                 user={user}
                 abook={props.abook}
                 onEdit={props.onEditRecord}
-                onDelete={onDeleteRecord}
+                onDeleted={onRecordDeleted}
                 onCopy={onCopyRecord}
                 onSend={onSendRecord}
                 onClose={() => {
@@ -565,10 +571,30 @@ const CABCtrlBar = (props: {
     }
   }
 
+  // 制御エリアで設定した値をコンテンツに反映できるように、
+  // CABCtrlBarの下にコンテンツコンポーネントを置き、CABCtrlBarのrender()内で子供（コンテンツ）を
+  // 按配するようにした　つまり、下記 div id="contents-inner" はここでしないと、親子関係を結んだ
+  // 状態では外からはできないため
+  // ※ 単に {children} だと変更したpropsが渡せないので、下記のように { React.Children.map(...)} のようにした
+  const childrenWithProps = Children.map(props.children, (child) => {
+    switch (typeof child) {
+      case "string":
+        return child;
+      case "object":
+        return React.cloneElement(
+          child as React.ReactElement<{ abook: ContentsPropsType }>,
+          { abook: { ...abook } }
+        );
+      default:
+        //console.log(`child type=${typeof child}`);
+        return null;
+    }
+  });
+
   return (
     <>
       {controls}
-      {props.children && props.children}
+      {childrenWithProps}
     </>
   );
 };
