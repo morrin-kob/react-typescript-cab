@@ -2,15 +2,15 @@ import * as React from "react";
 import { useContext, ReactNode, Children } from "react";
 import { UserContext, UserContextType } from "../Account";
 import { useQuery, useQueryClient } from "react-query";
-import ABRecDialog, {
-  RecordType,
-  ABRecEditStateType,
-  ReformName
-} from "./ABRecord";
+import { RecordType } from "../CABDataTypes";
+import ABRecDialog, { ReformName } from "./ABRecDialog";
 import ABSettings, { ABSettingDialogPropsType } from "./ABFunctions";
+import ImportDialog from "./ImportDialog";
 import CheckableEditableTable, {
   CETColumnType
 } from "../components/TableWithCheck";
+import PopupProgress from "../components/PopupProgress";
+import MessageBox, { MessageBoxProps } from "../components/MessageBox";
 import Box from "@mui/material/Box";
 import Grid from "@mui/material/Grid";
 import DeleteIcon from "@mui/icons-material/Delete";
@@ -41,6 +41,7 @@ import {
 } from "../AppSettings";
 import LinearProgress from "@mui/material/LinearProgress";
 import DefPersonImg from "../assets/images/person.png";
+import { SvgIcon } from "@mui/material";
 
 type ABInfoType = {
   loaded: boolean;
@@ -80,7 +81,7 @@ const CABAddressList = (props: {
   abook: ContentsPropsType;
   onEditRecord: (abookId: string, rec: RecordType) => void;
 }) => {
-  const user = useContext(UserContext);
+  const [abook, setAbook] = React.useState({ ...props.abook });
   //const [loaded, setLoaded] = React.useState(false);
   const [rlcounter, setRlcounter] = React.useState(0);
   const [recdlg, setRecdlg] = React.useState<RecdlgState>({
@@ -89,28 +90,44 @@ const CABAddressList = (props: {
   });
   const [page, setPage] = React.useState(0);
   const [rowsPerPage, setRowsPerPage] = React.useState(25);
+  const [progress, setProgress] = React.useState(false);
+  const [msgbox, setMsgbox] = React.useState<MessageBoxProps>({
+    open: false,
+    caption: "",
+    message: ""
+  });
+
+  const user = useContext(UserContext);
+
+  const cancelMsgBox = () => {
+    setMsgbox({ ...msgbox, open: false });
+  };
 
   let params = {
-    atk: user.getAToken(),
     ept: user.getEpm(),
     uag: user.getUag()
   };
   const queryClient = useQueryClient();
   const { isLoading, isFetching, isError, data, error } = useQuery(
-    props.abook.id,
+    abook.id,
     () => {
-      console.log(`loading:${props.abook.id}`);
+      // console.log(`loading:${abook.id}`);
 
       let url = user.getEpt();
-      if (isHomeAddress(props.abook.id)) {
+      if (isHomeAddress(abook.id)) {
         url += "/homeaddresses/list";
       } else {
-        url += `/addresses/${props.abook.id}/list`;
+        url += `/addresses/${abook.id}/list`;
       }
-      return fetchGet(url, params);
+      return fetchGet(url, params, { "X-atk": user.getAToken() });
     },
     { staleTime: 3000, cacheTime: 1000000 }
   );
+
+  if (abook.id !== props.abook.id) {
+    setAbook({ ...props.abook });
+    return <></>;
+  }
 
   const handleRowSelection = (e: {}) => {
     alert(JSON.stringify(e));
@@ -124,27 +141,67 @@ const CABAddressList = (props: {
     setRowsPerPage(+event.target.value);
     setPage(0);
   };
-
   const closeRecDialog = () => {
     setRecdlg({ ...recdlg, open: false });
   };
 
   const handleOnEdit = (key: string, label: string) => {
-    props.onEditRecord(props.abook.id, { id: key });
+    props.onEditRecord(abook.id, { id: key });
   };
   const handleOnShowDetail = (key: string, label: string) => {
     setRecdlg({ open: true, rec: { id: key, name: label } });
   };
 
   const onRecordDeleted = (abid: string, rec: RecordType) => {
-    queryClient.resetQueries(props.abook.id);
+    queryClient.resetQueries(abook.id);
 
     closeRecDialog();
   };
 
   // plural
   const DeleteRecords = (sels: readonly string[]) => {
-    alert(`削除:${JSON.stringify(sels)}`);
+    if (progress === true) return;
+    setProgress(true);
+    let postdata: {}[] = [];
+    let url = `${user.getEpt()}/addres`;
+    sels.forEach(function (recid) {
+      postdata.push({
+        uri: `${url}/${recid}`,
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json; charset=UTF-8;"
+        }
+      });
+    });
+
+    user.FetchWithRefreshedRetry(
+      `${user.getEpt()}/batch`,
+      "POST",
+      (json) => {
+        setProgress(false);
+        if ("data" in json) {
+          queryClient.resetQueries(abook.id);
+        } else {
+          let error: string =
+            json["error"] || json["statusText"] || "load error";
+          let mbinfo: MessageBoxProps = {
+            open: true,
+            caption: "削除エラー",
+            message: error,
+            icon: "error",
+            options: [
+              {
+                text: "OK",
+                handler: cancelMsgBox
+              }
+            ],
+            onCancel: cancelMsgBox
+          };
+          setMsgbox(mbinfo);
+        }
+      },
+      { postdata: postdata }
+    );
   };
 
   const onCopyRecord = (abid: string, rec: RecordType) => {};
@@ -170,14 +227,14 @@ const CABAddressList = (props: {
           if (res["a_token"]) {
             params["atk"] = res["a_token"];
             setRlcounter(rlcounter + 1);
-            queryClient.resetQueries(props.abook.id);
+            queryClient.resetQueries(abook.id);
           }
         });
       }
       cont = get_liner_Progress();
     } else {
       abinfo.addressData = data["data"];
-      //console.log(`loaded:${props.abook.name}`);
+      //console.log(`loaded:${abook.name}`);
 
       const columns_home: CETColumnType[] = [
         // : GridColDef[]
@@ -251,7 +308,7 @@ const CABAddressList = (props: {
         }
       ];
 
-      const orgPriority = props.abook.use ? props.abook.use === "corp" : false;
+      const orgPriority = abook.use ? abook.use === "corp" : false;
       const columns = orgPriority ? columns_org : columns_home;
 
       /*
@@ -334,14 +391,21 @@ const CABAddressList = (props: {
         return rec["id"];
       });
 
-      //if (!props.abook.name) props.abook.name = "temporary";
+      //if (!abook.name) abook.name = "temporary";
       if (rows.length === 0) {
-        cont = <></>;
+        cont = (
+          <>
+            <Box sx={{ py: 2, textAlign: "center" }}>
+              レコードが登録されてません
+            </Box>
+            <hr />
+          </>
+        );
       } else {
         cont = (
           <div style={{ height: "100%", width: "100%" }}>
             <CheckableEditableTable
-              tableTitle={props.abook.name}
+              tableTitle={abook.name}
               columns={columns}
               rowHSize="small"
               rowPerPageOptions={[25, 50, 100]}
@@ -360,13 +424,14 @@ const CABAddressList = (props: {
                 onClick: DeleteRecords
               }}
             />
-
+            <PopupProgress open={progress} type="circle" />
+            <MessageBox {...msgbox} />
             {recdlg.open && (
               <ABRecDialog
                 recid={recdlg.rec.id}
                 name={recdlg.rec.name}
                 user={user}
-                abook={props.abook}
+                abook={abook}
                 onEdit={props.onEditRecord}
                 onDeleted={onRecordDeleted}
                 onCopy={onCopyRecord}
@@ -380,7 +445,7 @@ const CABAddressList = (props: {
         );
       }
     }
-    //console.log(`out address list:${props.abook.name}`);
+    //console.log(`out address list:${abook.name}`);
   } else {
     cont = <Box sx={{ width: "100%", mt: 20 }}>{<p>no data</p>}</Box>;
   }
@@ -388,22 +453,71 @@ const CABAddressList = (props: {
   return cont;
 };
 
-export type CABCtrlBarProps = {
+const CABContentsInner = (props: {
   abook: ContentsPropsType;
-  children?: ReactNode;
+  onEditRecord: (abookId: string, rec: RecordType) => void;
+}) => {
+  const [abook, setAbook] = React.useState({ ...props.abook });
+
+  const user = useContext(UserContext);
+
+  if (user.isUserLoggedIn()) {
+    if (abook.id !== props.abook.id) {
+      setAbook({ ...props.abook });
+      return <></>;
+    }
+    if (abook.id) {
+      //console.log(`<CABAddressList ${abook.name} />`);
+      return (
+        <CABAddressList
+          abook={{ ...abook }}
+          onEditRecord={props.onEditRecord}
+        />
+      );
+    } else {
+      return (
+        <Box sx={{ width: "100%", mt: 20 }}>
+          <p>Choose Address-Book from the hamburger-menu.</p>
+        </Box>
+      );
+    }
+  } else {
+    return (
+      <div className="App-header">
+        <p>
+          Hey! What are you doing?
+          <br />
+          Just sign in!
+          <br />
+          Come on! Rack'n'Roll!
+        </p>
+      </div>
+    );
+  }
 };
 
-const CABCtrlBar = (props: {
+const CABContents = (props: {
   abook: ContentsPropsType;
-  children?: ReactNode;
+  onEditRecord: (abookId: string, rec: RecordType) => void;
 }) => {
   const [abook, setAbook] = React.useState({ ...props.abook });
   const [settingdlg, setSettingDlg] = React.useState(false);
+  const [importdlg, setImportDlg] = React.useState(false);
+  const [msgbox, setMsgbox] = React.useState<MessageBoxProps>({
+    open: false,
+    caption: "",
+    message: ""
+  });
+  const cancelMsgBox = () => {
+    setMsgbox({ ...msgbox, open: false });
+  };
 
   const user = useContext(UserContext);
 
   if (props.abook.id !== abook.id) {
+    console.log(`CABCtrlBar:abook changed! ${abook.name}➖${props.abook.name}`);
     setAbook({ ...props.abook });
+    return <></>;
   }
 
   const openSetting = () => {
@@ -414,9 +528,40 @@ const CABCtrlBar = (props: {
     setAbook({ ...abook });
   };
 
-  const addNewRecord = () => {
-    alert("新規追加　が選択された");
+  const execDeleteABook = () => {
+    let url = `${user.getEpt()}/group/${abook.id}`;
+    user.FetchWithRefreshedRetry(url, "DELETE", (json) => {
+      //todo
+    });
+  };
+  const deleteABook = () => {
+    let mbinfo: MessageBoxProps = {
+      open: true,
+      caption: "確認",
+      message: `この住所録「${abook.name}」を削除します
+                削除すると元には戻せません
+                　
+                よろしいですか？`,
+      icon: "question",
+      options: [
+        {
+          text: "削除",
+          handler: () => {
+            alert("todo:実際の削除作業");
+          }
+        },
+        {
+          text: "キャンセル",
+          handler: cancelMsgBox
+        }
+      ],
+      onCancel: cancelMsgBox
+    };
+    setMsgbox(mbinfo);
+  };
 
+  const addNewRecord = () => {
+    props.onEditRecord(abook.id, { id: "new" });
     // todo
   };
 
@@ -424,9 +569,7 @@ const CABCtrlBar = (props: {
     {
       text: "住所録の設定",
       icon: TuneIcon,
-      handler: () => {
-        openSetting();
-      }
+      handler: openSetting
     },
     {
       text: "住所録の共有",
@@ -443,7 +586,7 @@ const CABCtrlBar = (props: {
       text: "インポート",
       icon: UploadFileIcon,
       handler: () => {
-        alert("インポート を選択");
+        setImportDlg(true);
       }
     },
     {
@@ -460,9 +603,7 @@ const CABCtrlBar = (props: {
     {
       text: "住所録の削除",
       icon: DeleteForeverIcon,
-      handler: () => {
-        alert("住所録の削除 を選択");
-      }
+      handler: deleteABook
     }
   ];
 
@@ -476,8 +617,8 @@ const CABCtrlBar = (props: {
     const cxGearBtn = "3em"; //歯車アイコン
     const cxMiddle = `calc( 100% - calc( ${cxAddBtn} + ${cxGearBtn} ))`;
 
-    if (props.abook.id) {
-      console.log(`CABCtrlBar:rendering:${abook.name}`);
+    if (abook.id) {
+      //console.log(`CABCtrlBar:rendering:${abook.name}`);
       controls = (
         <>
           <Box sx={{ width: "100%" }}>
@@ -564,129 +705,33 @@ const CABCtrlBar = (props: {
               setSettingDlg(false);
             }}
           />
+          <MessageBox {...msgbox} />
+          {importdlg && (
+            <ImportDialog
+              abook={{ ...abook }}
+              onClose={(added: boolean) => {
+                setImportDlg(false);
+              }}
+            />
+          )}
         </>
       );
     } else {
-      controls = <>no id</>;
+      controls = <></>;
     }
   }
-
-  // 制御エリアで設定した値をコンテンツに反映できるように、
-  // CABCtrlBarの下にコンテンツコンポーネントを置き、CABCtrlBarのrender()内で子供（コンテンツ）を
-  // 按配するようにした　つまり、下記 div id="contents-inner" はここでしないと、親子関係を結んだ
-  // 状態では外からはできないため
-  // ※ 単に {children} だと変更したpropsが渡せないので、下記のように { React.Children.map(...)} のようにした
-  const childrenWithProps = Children.map(props.children, (child) => {
-    switch (typeof child) {
-      case "string":
-        return child;
-      case "object":
-        return React.cloneElement(
-          child as React.ReactElement<{ abook: ContentsPropsType }>,
-          { abook: { ...abook } }
-        );
-      default:
-        //console.log(`child type=${typeof child}`);
-        return null;
-    }
-  });
 
   return (
     <>
       {controls}
-      {childrenWithProps}
+      <CABContentsInner abook={abook} onEditRecord={props.onEditRecord} />
     </>
   );
 };
 
-const CABContents = (props: {
-  abook: ContentsPropsType;
-  onEditRecord: (abookId: string, rec: RecordType) => void;
-}) => {
-  const user = useContext(UserContext);
-
-  let cont = null;
-
-  //console.log(`----CABContents(${JSON.stringify(props.abook)})`);
-  if (user.isUserLoggedIn()) {
-    if (props.abook.id) {
-      cont = (
-        <CABAddressList abook={props.abook} onEditRecord={props.onEditRecord} />
-      );
-    } else {
-      cont = (
-        <Box sx={{ width: "100%", mt: 20 }}>
-          <p>Choose Address-Book from the hamburger-menu.</p>
-        </Box>
-      );
-    }
-  } else {
-    cont = (
-      <div className="App-header">
-        <p>
-          Hey! What are you doing?
-          <br />
-          Just sign in!
-          <br />
-          Come on! Rack'n'Roll!
-        </p>
-      </div>
-    );
-  }
-  return cont;
+CABContents.defaultProps = {
+  abook: { id: "", name: "", use: "private" },
+  onEditRecord: () => {}
 };
 
-export type CABEditCtrlBarProps = {
-  rec: ABRecEditStateType;
-  onEndEdit: () => void;
-  children: ReactNode;
-};
-
-const CABEditCtrlBar = (props: CABEditCtrlBarProps) => {
-  // const childrenWithProps = Children.map(props.children, (child) => {
-  //   switch (typeof child) {
-  //     case "string":
-  //       return child;
-  //     case "object":
-  //       return React.cloneElement(
-  //         child as React.ReactElement<{
-  //           rec: ABRecEditStateType;
-  //         }>,
-  //         { rec: props.rec }
-  //       );
-  //     default:
-  //       //console.log(`child type=${typeof child}`);
-  //       return null;
-  //   }
-  // });
-  return (
-    <>
-      <Box sx={{ width: "100%", align: "left" }}>
-        <Button
-          sx={{ mr: 1 }}
-          variant="outlined"
-          onClick={(e) => {
-            props.onEndEdit();
-          }}
-        >
-          戻る
-        </Button>
-        <Button color="info" variant="contained" sx={{ mr: 1 }}>
-          保存
-        </Button>
-        <Button variant="outlined" sx={{ mr: 1 }}>
-          保存して新規作成
-        </Button>
-        <Button variant="outlined" sx={{ px: 0 }}>
-          <DeleteForeverIcon />
-        </Button>
-      </Box>
-      <Box>
-        <h3>レコードの編集</h3>
-      </Box>
-      {props.children}
-    </>
-  );
-};
-
-export { CABContents, CABAddressList, CABCtrlBar, CABEditCtrlBar };
+export { CABContents, CABAddressList };

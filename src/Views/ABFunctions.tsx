@@ -3,52 +3,24 @@ import { useContext, ReactNode, Children } from "react";
 import { UserContext, UserContextType } from "../Account";
 import PopupProgress from "../components/PopupProgress";
 import { useQuery } from "react-query";
-import ABRecDialog, {
-  RecordType,
-  ABRecEditStateType,
-  ReformName
-} from "./ABRecord";
-import CheckableEditableTable, {
-  CETColumnType
-} from "../components/TableWithCheck";
 import Box from "@mui/material/Box";
 import Grid from "@mui/material/Grid";
-import DeleteIcon from "@mui/icons-material/Delete";
-import Paper from "@mui/material/Paper";
 import Divider from "@mui/material/Divider";
-import InputBase from "@mui/material/InputBase";
 import Button from "@mui/material/Button";
 import IconButton from "@mui/material/IconButton";
-import ExpandCircleDownOutlinedIcon from "@mui/icons-material/ExpandCircleDownOutlined";
-import SearchIcon from "@mui/icons-material/Search";
-import SettingsOutlinedIcon from "@mui/icons-material/SettingsOutlined";
-import TuneIcon from "@mui/icons-material/Tune";
-import ShareIcon from "@mui/icons-material/Share";
-import UploadFileIcon from "@mui/icons-material/UploadFile";
-import FileDownloadIcon from "@mui/icons-material/FileDownload";
-import DeleteForeverIcon from "@mui/icons-material/DeleteForever";
-import AccountCircle from "@mui/icons-material/AccountCircle";
-import PersonAddAlt1Icon from "@mui/icons-material/PersonAddAlt1";
 import Dialog from "@mui/material/Dialog";
 import DialogTitle from "@mui/material/DialogTitle";
 import DialogActions from "@mui/material/DialogActions";
 import DialogContent from "@mui/material/DialogContent";
 import MessageBox, { MessageBoxProps } from "../components/MessageBox";
-import ButtonBase from "@mui/material/ButtonBase";
 import CloseIcon from "@mui/icons-material/Close";
-import Checkbox from "@mui/material/Checkbox";
 import { isMobile } from "react-device-detect";
 import Radio from "@mui/material/Radio";
 import RadioGroup from "@mui/material/RadioGroup";
 import FormControlLabel from "@mui/material/FormControlLabel";
 import FormControl from "@mui/material/FormControl";
 import FormLabel from "@mui/material/FormLabel";
-import PulldownMenu, {
-  PulldownMenuItem
-} from "../components/PulldownMenuButton";
-import { AppVal, ContentsPropsType, isHomeAddress } from "../AppSettings";
-import LinearProgress from "@mui/material/LinearProgress";
-import { useRef } from "react";
+import { ContentsPropsType } from "../AppSettings";
 import { BrowserHistory } from "history";
 import {
   EditFieldTitle,
@@ -126,14 +98,10 @@ const ABSettings = (props: ABSettingDialogPropsType) => {
       options: [
         {
           text: "OK",
-          handler: () => {
-            cancelMsgBox();
-          }
+          handler: cancelMsgBox
         }
       ],
-      onCancel: () => {
-        cancelMsgBox();
-      }
+      onCancel: cancelMsgBox
     };
     setMsgbox(mbinfo);
   };
@@ -149,14 +117,11 @@ const ABSettings = (props: ABSettingDialogPropsType) => {
   };
 
   const handleSave = () => {
+    if (saving === true) return;
     setSaving(true);
 
     let url = `${user.getEpt()}/group/${props.abook.id}`;
-    let params = {
-      atk: user.getAToken(),
-      ept: user.getEpm(),
-      uag: user.getUag()
-    };
+    let params = {};
     if ("etag" in props.abook) {
       params["If-Match"] = props.abook["etag"];
     }
@@ -164,10 +129,12 @@ const ABSettings = (props: ABSettingDialogPropsType) => {
     user.FetchWithRefreshedRetry(
       url,
       "PUT",
-      params,
-      { ...settings },
       (json) => {
         onSaveSetting(json);
+      },
+      {
+        params: params,
+        postdata: { ...settings }
       }
     );
   };
@@ -251,7 +218,7 @@ const ABSettings = (props: ABSettingDialogPropsType) => {
         <FieldEditBox
           label=""
           field="name"
-          rec={settings}
+          data={settings}
           onChangeField={onChangeField}
         />
         {/* --------------------------------- */}
@@ -263,9 +230,12 @@ const ABSettings = (props: ABSettingDialogPropsType) => {
                 width={cxBox}
                 height={cyBox}
                 color={col}
+                id={col}
                 checked={getCurrABColor() === col}
                 onClick={handleSetColor}
-              />
+              >
+                {getCurrABColor() === col && <>✔</>}
+              </ColorBox>
             </Grid>
           ))}
         </Grid>
@@ -275,14 +245,15 @@ const ABSettings = (props: ABSettingDialogPropsType) => {
           {Object.keys(iconlist).map((key) => (
             <Grid item xs={1}>
               <ColorBox
+                id={key}
                 width={cxBox}
                 height={cyBox}
                 color="transparent"
-                abicon={key}
                 selected={getCurrABIcon() === key}
-                icon_sx={{ color: getCurrABColor() }}
                 onClick={handleSetIcon}
-              />
+              >
+                <ABIcon name={key} sx={{ color: getCurrABColor() }} />
+              </ColorBox>
             </Grid>
           ))}
         </Grid>

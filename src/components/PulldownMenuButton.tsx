@@ -7,6 +7,7 @@ import Button from "@mui/material/Button";
 import IconButton from "@mui/material/IconButton";
 import Tooltip from "@mui/material/Tooltip";
 import { SvgIcon } from "@mui/material";
+import Typography from "@mui/material/Typography";
 
 export type PulldownMenuItem = {
   icon?: typeof SvgIcon;
@@ -73,8 +74,8 @@ export default function PulldownMenu(props: PulldownMenuProps) {
       sx={{
         marginRight: 1,
         backgroundColor: "white",
-        width: "19px",
-        height: "19px"
+        width: "18px",
+        height: "18px"
       }}
     >
       <props.icon sx={iconSx} />
@@ -86,11 +87,10 @@ export default function PulldownMenu(props: PulldownMenuProps) {
   return (
     <React.Fragment>
       <Box sx={{ display: "flex", alignItems: "center", textAlign: "center" }}>
-        <Tooltip title={props.tipText}>
+        <Tooltip title={props.tipText || ""}>
           {props.text ? (
             <Button
-              variant="contained"
-              color={color_prop}
+              style={{ flexGrow: 1 }}
               sx={{ backgroundColor: color_sx }}
               onClick={handleClick}
               aria-controls={open ? props.popupId : undefined}
@@ -98,7 +98,17 @@ export default function PulldownMenu(props: PulldownMenuProps) {
               aria-expanded={open ? "true" : undefined}
             >
               {icon}
-              {props.text}
+              <div
+                style={{
+                  color: "white",
+                  maxWidth: "100%",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap"
+                }}
+              >
+                {props.text}
+              </div>
             </Button>
           ) : (
             <IconButton

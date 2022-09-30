@@ -1,12 +1,12 @@
 import * as React from "react";
 import { Component, ReactNode, useContext } from "react";
 import { UserContext } from "../Account";
-import { AccountButton } from "./AccountPalette";
+import { AccountButton } from "./AccountPalette2";
 import AppBar from "@mui/material/AppBar";
 import Link from "@mui/material/Link";
 import Grid from "@mui/material/Grid";
 import IconButton from "@mui/material/IconButton";
-import { SvgIcon } from "@mui/material";
+import { SvgIcon, Typography } from "@mui/material";
 
 export type linkType = {
   href: string;
@@ -115,14 +115,14 @@ function HeaderRight(props: HeaderPropType) {
                     }}
                     disabled={false}
                   >
-                    <link.icon sx={{ color: "#c00000" }} />
+                    <link.icon sx={{ color: "var(--col-offical)" }} />
                   </IconButton>
                   {link.text}
                 </Link>
               </Grid>
             );
           })}
-        <Grid item mt={0}>
+        <Grid item xs={5} mt={0}>
           {rightblock}
         </Grid>
       </Grid>

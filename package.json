@@ -2,10 +2,7 @@
   "name": "efrdcz",
   "version": "0.0.353",
   "description": "hello world starter",
-  "keywords": [
-    "react",
-    "material"
-  ],
+  "keywords": ["react", "material"],
   "homepage": "https://codesandbox.io/s/4j7m47vlm4",
   "main": "index.js",
   "dependencies": {
@@ -16,10 +13,13 @@
     "@mui/x-data-grid": "latest",
     "@mui/x-date-pickers": "5.0.0-beta.4",
     "date-fns": "2.29.1",
+    "encoding-japanese": "latest",
     "material-ui-popup-state": "^2.0.0",
+    "papaparse": "latest",
     "react": "latest",
     "react-device-detect": "latest",
     "react-dom": "18.2.0",
+    "react-papaparse": "latest",
     "react-query": "3.39.2",
     "react-router-dom": "6.3.0",
     "typescript": "4.7.4"

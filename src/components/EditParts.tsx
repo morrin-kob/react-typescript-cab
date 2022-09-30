@@ -1,8 +1,25 @@
 import * as React from "react";
+import { RefObject } from "react";
+import { reformResponse } from "../AppSettings";
 import Paper from "@mui/material/Paper";
 import InputBase from "@mui/material/InputBase";
+import Input from "@mui/material/Input";
+import OutlinedInput from "@mui/material/OutlinedInput";
+import FilledInput from "@mui/material/FilledInput";
 import TextField from "@mui/material/TextField";
+import InputAdornment from "@mui/material/InputAdornment";
+import Visibility from "@mui/icons-material/Visibility";
+import VisibilityOff from "@mui/icons-material/VisibilityOff";
+import IconButton from "@mui/material/IconButton";
+import Autocomplete from "@mui/material/Autocomplete";
 import Select, { SelectChangeEvent } from "@mui/material/Select";
+import Checkbox from "@mui/material/Checkbox";
+import Radio from "@mui/material/Radio";
+import RadioGroup from "@mui/material/RadioGroup";
+import Switch from "@mui/material/Switch";
+import Grid from "@mui/material/Grid";
+import FormControlLabel from "@mui/material/FormControlLabel";
+import FormControl from "@mui/material/FormControl";
 import MenuItem from "@mui/material/MenuItem";
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns";
@@ -15,12 +32,20 @@ import type {} from "@mui/x-date-pickers/themeAugmentation";
 import Divider from "@mui/material/Divider";
 import Button from "@mui/material/Button";
 import Box from "@mui/material/Box";
-import { Typography } from "@mui/material";
+import ClearIcon from "@mui/icons-material/Clear";
+import HighlightOffIcon from "@mui/icons-material/HighlightOff";
 import { ABIcon } from "../Views/ABIcons";
+import FileOpenIcon from "@mui/icons-material/FileOpen";
+import { Typography } from "@mui/material";
 
 export const EditFieldTitle = (props: { title: string }) => {
   return (
-    <h5 style={{ marginBottom: "2ex", marginTop: "2ex" }}>{props.title}</h5>
+    <>
+      {/* <h5 style={{ marginBottom: "2ex", marginTop: "2ex" }}>{props.title}</h5> */}
+      <h5 style={{ margin: "2ex 1pt" }}>{props.title}</h5>
+      {/* <Typography variant="h5" sx={{my:2}} >{props.title}</Typography> */}
+      {/* <Typography component="h5" sx={{my:2}} >{props.title}</Typography> */}
+    </>
   );
 };
 
@@ -36,10 +61,10 @@ type SIBProps = {
     | "info"
     | "warning"
     | undefined;
-  bgcolor?: string;
-  paddingY?: string | number;
-  borderWidth?: string | number;
+  sx?: SxProps;
   onClick?: (id: string) => void;
+  disabled?: boolean;
+  size?: "small" | "medium" | "large";
   children: React.ReactNode;
 };
 //
@@ -53,17 +78,29 @@ export const SquareIconButton = (props: SIBProps) => {
     mt: 1,
     px: 1,
     py: "6px",
+    borderColor: "silver",
     borderWidth: "1px 1px 2px 1px",
     fontSize: "small"
   };
-  if (props.bgcolor) sxdata["backgroundColor"] = props.bgcolor;
-  if (props.paddingY) sxdata.py = props.paddingY;
-  if (props.borderWidth) sxdata.borderWidth = props.borderWidth;
+
+  if (props.size) {
+    if (props.size === "small") {
+      sxdata.px = 0.2;
+      sxdata.py = "2px";
+    } else if (props.size === "large") {
+      sxdata.px = 1.5;
+      sxdata.py = "8px";
+    }
+  }
+  if (props.sx) {
+    sxdata = { ...sxdata, ...props.sx };
+  }
 
   return (
     <Button
-      color={props.color}
+      color={props.color || "inherit"}
       variant={props.variant}
+      disabled={props.disabled}
       sx={sxdata}
       onClick={() => {
         if (props.onClick) props.onClick(props.id);
@@ -74,182 +111,640 @@ export const SquareIconButton = (props: SIBProps) => {
   );
 };
 
-type FieldEditProps = {
-  label: string;
-  field: string;
-  rec: {};
-  onChangeField: (field: string, value: string | null) => void;
+type EditPropsBase = {
+  data: object | string | string[] | number | number[];
+  id: string; // data[id]
+  name?: string;
+  label?: string;
+  variant?: "outlined" | "filled" | "standard"; // default:outlined
+  sx?: SxProps;
+  onChange: (id: string, value: string | string[] | null, event?: any) => void;
 };
-interface FieldComboProps extends FieldEditProps {
-  options: { label?: string; data: string }[];
-  editable: boolean;
-  fieldOnEdit?: string;
+
+interface FieldEditProps extends EditPropsBase {
+  type?:
+    | "email"
+    | "file"
+    | "hidden"
+    | "month"
+    | "number"
+    | "password"
+    | "search"
+    | "tel"
+    | "time"
+    | "url"
+    | "week"
+    | "text"
+    | undefined; // -> text
+  inputProps?: {};
 }
 
-export const ReformField = (rec: {}, field: string) => {
+export const ReformField = (
+  data: object | string | string[] | number | number[],
+  field: string
+) => {
   let rp = {
-    rec: rec,
+    data: {},
     field: field
   };
-  if (rp.field.match(".")) {
-    //console.log(`ReformField:field=${rp.field}`);
+
+  if (typeof data !== "object") {
+    rp.data = { [field]: data };
+  } else {
+    rp.data = data;
+
     let inners = rp.field.split(/\]\.|\.|\[/);
-    rp.field = inners.pop() || "";
-    inners.forEach((name) => {
-      if (name in rp.rec === false || rp.rec[name] === null) {
-        rp.rec[name] = {};
-      }
-      rp.rec = rp.rec[name];
-    });
+    if (inners.length > 1) {
+      rp.field = inners.pop() || "";
+
+      inners.forEach((name, index) => {
+        let next = index === inners.length - 1 ? rp.field : inners[index + 1];
+
+        if (name in rp.data === false || rp.data[name] === null) {
+          if (next.search(/[^0-9]/) !== -1) {
+            rp.data[name] = {};
+          } else {
+            rp.data[name] = [];
+          }
+        }
+        rp.data = rp.data[name];
+      });
+    }
   }
   return rp;
 };
 
 export const FieldEditBox = (props: FieldEditProps) => {
-  let rp = ReformField(props.rec, props.field);
+  const [values, setValues] = React.useState({
+    amount: "",
+    password: "",
+    showPassword: false
+  });
+
+  let rp = ReformField(props.data, props.id);
+
+  const type = props.type || "text";
+  const variant = props.variant || "outlined";
+
+  let attr = {};
+  if (props.inputProps) attr = { ...props.inputProps };
+  let sx: SxProps = { width: "100%" };
+  if (variant === "standard") {
+    sx = { ...sx, pt: 0.8, pb: 0.2, px: 1 };
+  }
+
+  let sxfile: SxProps = { width: "100%", mt: 1 };
+
+  let filename = "";
+  if (type === "file") {
+    sx["display"] = "none";
+    if (rp.data[rp.field]) {
+      filename = rp.data[rp.field].split(/[/\\]/).pop() || "";
+    }
+    if (props.sx) {
+      sxfile = { ...sxfile, ...props.sx };
+    }
+  } else if (props.sx) {
+    sx = { ...sx, ...props.sx };
+  }
+
+  const handleClickShowPassword = () => {
+    setValues({
+      ...values,
+      showPassword: !values.showPassword
+    });
+  };
+  const handleMouseDownPassword = (
+    event: React.MouseEvent<HTMLButtonElement>
+  ) => {
+    event.preventDefault();
+  };
+
+  let controlId = props.id;
+  let inputadorment = <></>;
+  if (type === "password") {
+    inputadorment = (
+      <InputAdornment position="end">
+        <IconButton
+          size="small"
+          onClick={handleClickShowPassword}
+          onMouseDown={handleMouseDownPassword}
+          edge="end"
+        >
+          {values.showPassword ? <VisibilityOff /> : <Visibility />}
+        </IconButton>
+      </InputAdornment>
+    );
+  }
+  const ctrl = {
+    type:
+      variant === "outlined"
+        ? OutlinedInput
+        : variant === "filled"
+        ? FilledInput
+        : Input
+  };
 
   return (
-    <Paper sx={{ width: "100%", mt: 1, mb: 0 }}>
+    <>
+      {type === "file" && (
+        <Paper
+          variant="outlined"
+          elevation={0}
+          sx={sxfile}
+          onClick={() => {
+            // useRef 作戦失敗により getElementById()作戦に切り替えた
+            let elm = document.getElementById(controlId);
+            if (elm) elm.click();
+            // if( fileOpenRef.current ){
+            //   fileOpenRef.current.click();
+            // }
+          }}
+        >
+          <Button variant="contained" color="info" sx={{ mr: 1 }}>
+            <FileOpenIcon />
+          </Button>
+          <Typography
+            component="span"
+            variant="subtitle1"
+            sx={{ pl: 1, color: "gray" }}
+          >
+            {filename || "ファイルを選択"}
+          </Typography>
+        </Paper>
+      )}
+      <Paper elevation={0} sx={{ width: "100%", mt: 1.1, mb: 0 }}>
+        <ctrl.type
+          type={values.showPassword ? "text" : type}
+          id={controlId}
+          name={props.name || controlId}
+          inputProps={attr}
+          sx={sx}
+          style={{ marginTop: "-2px" }}
+          size="small"
+          placeholder={props.label}
+          value={
+            type !== "file" && rp.field in rp.data ? rp.data[rp.field] : ""
+          }
+          onChange={(e) => props.onChange(props.id, e.target.value, e)}
+          endAdornment={inputadorment}
+        />
+      </Paper>
+    </>
+  );
+};
+
+interface FieldTextareaProps extends EditPropsBase {
+  rows?: number; // default:3
+  inputProps?: {};
+  flexHeight?: boolean; // default: true
+  maxRows?: number; // default:10
+}
+const minRows = 3;
+export const FieldTextArea = (props: FieldTextareaProps) => {
+  const [cyLine, setCyLine] = React.useState(0);
+  const [rows, setRows] = React.useState(props.rows || minRows);
+  const maxRows = props.maxRows || 10;
+
+  let rp = ReformField(props.data, props.id);
+
+  let ctrlId = props.id;
+  let sx: SxProps = { width: "100%", mt: -0.24 };
+  if (props.sx) {
+    sx = { ...sx, ...props.sx };
+  }
+  const variant = props.variant || "outlined";
+  const flexHeight = props.flexHeight !== undefined ? props.flexHeight : true;
+
+  let tid_prpr = -1;
+  let tid_calc = -1;
+
+  const countLines = (text: string) => {
+    if (tid_prpr > -1) return;
+    if (tid_calc > -1) {
+      window.clearTimeout(tid_calc);
+      tid_calc = -1;
+    }
+
+    let edit = document.getElementById(ctrlId);
+    if (edit) {
+      const cx = edit.clientWidth; //edit.style.width;
+      const cid = "ta_check_height_lc";
+      let elm = document.getElementById(cid);
+      if (!elm) {
+        elm = document.createElement("div");
+        elm.id = cid;
+        document.body.appendChild(elm);
+        elm.style.overflowWrap = "break-word";
+        elm.style.wordBreak = "break-all";
+        elm.style.lineHeight = `${window
+          .getComputedStyle(edit)
+          .getPropertyValue("line-height")}px`; //edit.style.lineHeight;
+        elm.style.fontSize = `${window
+          .getComputedStyle(edit)
+          .getPropertyValue("font-size")}px`; //edit.style.fontSize;
+        elm.innerHTML = "a";
+        tid_prpr = window.setTimeout(() => {
+          if (elm) {
+            elm.style.display = "block";
+            setCyLine(elm.clientHeight);
+            elm.style.display = "none";
+            tid_prpr = -1;
+          }
+        }, 200);
+      }
+      if (cyLine) {
+        elm.style.width = `${cx}px`;
+        elm.innerHTML = text.replace(/\r\n|\r|\n/g, "<br/>");
+        tid_calc = window.setTimeout(() => {
+          tid_calc = -1;
+          if (elm) {
+            elm.style.display = "block";
+            let lines = parseInt(
+              `${(elm.clientHeight + (cyLine - 1)) / cyLine}`,
+              10
+            );
+            if (lines < minRows) lines = minRows;
+            if (lines > maxRows) lines = maxRows;
+            if (rows !== lines) setRows(lines);
+            elm.style.display = "none";
+          }
+        }, 500);
+      }
+    }
+  };
+
+  return (
+    <Paper elevation={0} sx={{ width: "100%", mt: 1, mb: 0 }}>
       <TextField
-        variant="outlined"
-        sx={{ width: "100%", mt: -0.26 }}
-        size="small"
+        id={ctrlId}
+        variant={variant}
+        sx={sx}
+        multiline
+        rows={rows}
         placeholder={props.label}
-        value={rp.field in rp.rec ? rp.rec[rp.field] : ""}
-        onChange={(e) => props.onChangeField(props.field, e.target.value)}
+        value={rp.data[rp.field]}
+        onChange={(e) => {
+          props.onChange(props.id, e.target.value, e);
+          if (flexHeight) countLines(e.target.value);
+        }}
       />
     </Paper>
   );
 };
 
-export const FieldTextArea = (props: FieldEditProps) => {
-  let rp = ReformField(props.rec, props.field);
-  return (
-    <Paper sx={{ width: "100%", mt: 1, mb: 0 }}>
-      <TextField
-        variant="outlined"
-        sx={{ width: "100%", mt: -0.24 }}
-        multiline
-        rows={3}
-        placeholder={props.label}
-        value={rp.rec[rp.field]}
-        onChange={(e) => props.onChangeField(props.field, e.target.value)}
-      />
-    </Paper>
-  );
+type CBOptionType = {
+  label?: string;
+  value: string;
+};
+interface FieldComboProps extends EditPropsBase {
+  options: CBOptionType[];
+  editable: boolean;
+  enableEmpty?: boolean;
+  fieldOnEdit?: string;
+  backAroundColor?: string;
+}
+
+const acimputcb = (
+  props: FieldComboProps,
+  options: CBOptionType[],
+  event: React.SyntheticEvent<Element, Event>,
+  newValue: string
+) => {
+  let field = props.fieldOnEdit || props.id;
+  let value = newValue || ""; //event.target.value;
+  const opvalues = options.map((el) => el.value);
+  let index = opvalues.indexOf(value);
+  if (index >= 0) {
+    field = props.id;
+    value = options[index].value;
+  } else if (props.fieldOnEdit) {
+    props.onChange(props.id, null, event);
+  }
+  props.onChange(field, value, event);
 };
 
 export const FieldComboBox = (props: FieldComboProps) => {
-  let rp = ReformField(props.rec, props.field);
-  let erp = ReformField(props.rec, props.fieldOnEdit || props.field);
-  const ddWidth = props.editable ? "36px" : "100%";
+  let rp = ReformField(props.data, props.id);
+  let erp = ReformField(props.data, props.fieldOnEdit || props.id);
+  let bac = props.backAroundColor ? props.backAroundColor : "white";
   const style = props.editable
-    ? { border: "solid silver", borderWidth: "1px 1px 2px 1px" }
+    ? { borderStyle: "solid", borderColor: bac, borderWidth: "2px 0px 0px 0px" }
     : {};
   let editText = "";
+
+  let options: CBOptionType[] = [];
+  props.options.forEach((el) => {
+    options.push({ label: el.label || el.value, value: el.value });
+  });
+
   if (props.editable) {
-    if (props.fieldOnEdit && rp.rec[rp.field] === null) {
-      editText = erp.rec[erp.field];
+    if (props.fieldOnEdit && rp.data[rp.field] === null) {
+      editText = erp.data[erp.field];
     } else {
-      const datas = props.options.map((el) => el.data);
-      let index = datas.indexOf(rp.rec[rp.field]);
+      const opvalues = options.map((el) => el.value);
+      let index = opvalues.indexOf(rp.data[rp.field]);
       if (index >= 0) {
-        editText = props.options[index].label || "";
+        editText = options[index].label || "";
       } else {
-        editText = erp.rec[erp.field];
+        editText = erp.data[erp.field];
       }
     }
   }
+
+  let edit_sx = { width: "100%" };
+  const variant = props.variant || "outlined";
+  if (variant === "standard") {
+    edit_sx = props.editable
+      ? { ...edit_sx, pt: 0.8, pb: 0.2, px: 1 }
+      : { ...edit_sx, pt: 1 };
+  }
+
   return (
-    <Paper
-      variant="outlined"
-      sx={{ width: "100%", mt: 1, mb: 0 }}
-      style={style}
-    >
-      {props.editable && (
-        <InputBase
+    <Paper elevation={0} sx={{ width: "100%", mt: 1.1, mb: 0 }} style={style}>
+      {props.editable ? (
+        <Autocomplete
+          noOptionsText={"..."}
+          style={{ marginTop: "-4px" }}
           size="small"
-          sx={{ pl: 1, width: `calc( 100% - ${ddWidth} )`, mt: -0.24 }}
-          placeholder={props.label}
-          value={editText}
-          onChange={(e) => {
-            let field = props.fieldOnEdit || props.field;
-            let value = e.target.value;
-            const labels = props.options.map((el) => el.label);
-            let index = labels.indexOf(value);
-            if (index >= 0) {
-              field = props.field;
-              value = props.options[index].data;
-            } else if (props.fieldOnEdit) {
-              props.onChangeField(props.field, null);
-            }
-            props.onChangeField(field, value);
+          clearIcon={<ClearIcon fontSize="small" />}
+          componentsProps={{
+            clearIndicator: { sx: { width: "0.9em", height: "0.9em" } },
+            popupIndicator: { sx: { width: "0.9em", height: "0.9em" } }
           }}
+          options={options}
+          getOptionLabel={(option) => option.label || ""}
+          isOptionEqualToValue={(option, value) => {
+            return option.label === value.label;
+          }}
+          value={{ label: editText, value: rp.data[rp.field] }}
+          inputValue={editText}
+          onChange={(event, newValue) => {
+            acimputcb(
+              props,
+              options,
+              event,
+              newValue ? newValue["value"] || "" : ""
+            );
+          }}
+          onInputChange={(event, newInputValue) => {
+            if (newInputValue) {
+              acimputcb(props, options, event, newInputValue);
+            }
+          }}
+          id={`combo_${props.id}`}
+          renderInput={(params) => (
+            <TextField
+              {...params}
+              //  label={props.label}
+              placeholder={props.label}
+              variant={variant}
+              sx={edit_sx}
+              // margin="none"
+            />
+          )}
         />
+      ) : (
+        <FormControl variant={variant} sx={edit_sx}>
+          <Select
+            sx={{ width: "100%", mt: -0.24 }}
+            size="small"
+            value={props.editable ? "" : rp.data[rp.field]}
+            onChange={(e) => props.onChange(props.id, e.target.value, e)}
+            displayEmpty
+          >
+            {!props.enableEmpty && <MenuItem value="">&nbsp;</MenuItem>}
+            {props.options.map((option) => (
+              <MenuItem value={option.value}>
+                {option.label || option.value}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
       )}
-      <Select
-        variant="outlined"
-        sx={{ width: ddWidth, mt: -0.24 }}
-        size="small"
-        value={props.editable ? "" : rp.rec[rp.field]}
-        onChange={(e) => props.onChangeField(props.field, e.target.value)}
-        displayEmpty
-      >
-        <MenuItem value="">&nbsp;</MenuItem>
-        {props.options.map((option) => (
-          <MenuItem value={option.data}>{option.label || option.data}</MenuItem>
-        ))}
-      </Select>
     </Paper>
   );
 };
-// sx={{ width: "100%", mt: 1, mb: 0, backgroundColor: "white" }}
-// size="small"
 
-export const FieldDatePicker = (props: FieldEditProps) => {
-  let rp = ReformField(props.rec, props.field);
+interface CheckboxGroupProps extends EditPropsBase {
+  options: CBOptionType[];
+  type?: "Checkbox" | "Switch" | undefined; // default:checkbox
+  check_size?: "small" | "medium" | undefined; // default:medium
+  lplacement?: "start" | "top" | "bottom" | "end"; // default:end
+  color?:
+    | "primary"
+    | "secondary"
+    | "success"
+    | "error"
+    | "info"
+    | "warning"
+    | "default"
+    | undefined; // default:primary
+  label_sx?: SxProps;
+  check_sx?: SxProps;
+}
 
-  const baseTheme = useTheme();
-  const theme = createTheme(
-    { ...baseTheme },
-    {
-      components: {
-        MuiDatePicker: {
-          styleOverrides: {
-            root: {
-              backgroundColor: "red"
-            }
-          }
-        }
+export const FieldCheckboxGroup = (props: CheckboxGroupProps) => {
+  let rp = ReformField(props.data, props.id);
+
+  let curr = {};
+  if (rp.data[rp.field]) {
+    rp.data[rp.field].split(/,/).forEach((val: string) => {
+      curr[val] = true;
+    });
+  }
+
+  const handleCheck = (value: string, checked: boolean) => {
+    curr[value] = checked;
+    let values = "";
+    Object.keys(curr).forEach((val) => {
+      if (curr[val]) {
+        if (values) values += ",";
+        values += val;
       }
-    }
-  );
-
-  const FullWidth = {
-    display: "flex",
-    "flex-direction": "column",
-    width: "100%"
+    });
+    props.onChange(props.id, values);
   };
+
+  let type = props.type || "Checkbox";
+  const ctrl = { type: type === "Checkbox" ? Checkbox : Switch };
+  let lplacement = props.lplacement || "end";
+  let elv = props.label ? 1 : 1;
+  let check_sx: SxProps = {};
+  if (type === "Checkbox") check_sx["px"] = 1;
+  if (props.check_sx) check_sx = { ...check_sx, ...props.check_sx };
+
+  return (
+    <Paper elevation={elv} sx={{ width: "100%", p: 0, mt: 1, mb: 0 }}>
+      {props.label && (
+        <div
+          style={{
+            padding: "0 0 4pt 3pt",
+            color: "var(--col-explain)",
+            fontSize: "90%"
+          }}
+        >
+          {props.label}
+        </div>
+      )}
+      <Grid container>
+        {props.options.map((option) => {
+          let control = (
+            <ctrl.type
+              sx={check_sx}
+              size={props.check_size || "medium"}
+              color={props.color || "primary"}
+              checked={curr[option.value]}
+              onChange={(event, checked) => {
+                handleCheck(option.value, checked);
+              }}
+            />
+          );
+
+          return (
+            <Grid item sx={{ flexGrow: 1 }}>
+              <FormControlLabel
+                sx={props.label_sx}
+                label={option.label}
+                control={control}
+                labelPlacement={lplacement}
+              />
+            </Grid>
+          );
+        })}
+      </Grid>
+    </Paper>
+  );
+};
+
+interface RadioButtonGroupProps extends EditPropsBase {
+  options: CBOptionType[];
+  default_val: string;
+  radio_size?: "small" | "medium" | undefined; // default:medium
+  lplacement?: "start" | "top" | "bottom" | "end"; // default:end
+  color?:
+    | "primary"
+    | "secondary"
+    | "success"
+    | "error"
+    | "info"
+    | "warning"
+    | "default"
+    | undefined; // default:primary
+  label_sx?: SxProps;
+  radio_sx?: SxProps;
+}
+
+export const FieldRadioButtonsGroup = (props: RadioButtonGroupProps) => {
+  let rp = ReformField(props.data, props.id);
+
+  let curr = rp.data[rp.field];
+
+  const handleCheck = (value: string) => {
+    props.onChange(props.id, value);
+  };
+
+  let lplacement = props.lplacement || "end";
+  let elv = props.label ? 1 : 1;
+  let radio_sx: SxProps = { px: 1 };
+  if (props.radio_sx) radio_sx = { ...radio_sx, ...props.radio_sx };
+
+  let control = (
+    <Radio
+      sx={radio_sx}
+      size={props.radio_size || "medium"}
+      color={props.color || "primary"}
+    />
+  );
+  return (
+    <Paper elevation={elv} sx={{ width: "100%", py: 0, px: 2, mt: 1, mb: 0 }}>
+      {props.label && (
+        <div
+          style={{
+            padding: "0 0 4pt 0",
+            color: "var(--col-explain)",
+            fontSize: "90%"
+          }}
+        >
+          {props.label}
+        </div>
+      )}
+      <RadioGroup
+        defaultValue={curr || props.default_val || ""}
+        name={props.name || ""}
+        onChange={(event, value) => {
+          handleCheck(value);
+        }}
+      >
+        <Grid container>
+          {props.options.map((option) => {
+            return (
+              <Grid item sx={{ flexGrow: 1 }}>
+                <FormControlLabel
+                  value={option.value}
+                  control={control}
+                  label={option.label}
+                  sx={props.label_sx}
+                  labelPlacement={lplacement}
+                />
+              </Grid>
+            );
+          })}
+        </Grid>
+      </RadioGroup>
+    </Paper>
+  );
+};
+
+interface DatePickerProps extends EditPropsBase {
+  inputFormat?: string;
+  backAroundColor?: string;
+}
+
+export const FieldDatePicker = (props: DatePickerProps) => {
+  let rp = ReformField(props.data, props.id);
+
+  let bac = props.backAroundColor ? props.backAroundColor : "white";
+
+  let sx: SxProps = {
+    width: "100%",
+    my: 1,
+    p: 0,
+    borderStyle: "solid",
+    borderColor: bac,
+    borderWidth: "2px 0px 0px 0px"
+  };
+  if (props.sx) sx = { ...sx, ...props.sx };
+
+  let inpformat = props.inputFormat || "yyyy年MM月dd日";
+  let mask = inpformat.replace(/([yY]{2-4})|([mMdD]{1-2})/, "_");
+
   return (
     <LocalizationProvider dateAdapter={AdapterDateFns} adapterLocale={ja}>
-      <Paper>
-        <div style={FullWidth}>
-          <ThemeProvider theme={theme}>
-            <MobileDatePicker
-              className="datepicker"
-              leftArrowButtonText="前月"
-              rightArrowButtonText="翌月"
-              label={props.label}
-              inputFormat="yyyy年MM月dd日"
-              mask="____年__月__日"
-              toolbarFormat="yyyy年MM月"
-              value={rp.rec[rp.field]}
-              onChange={(newValue: Date | null) =>
-                props.onChangeField(props.field, `${newValue || ""}`)
-              }
-              renderInput={(params) => <TextField {...params} />}
-            />
-          </ThemeProvider>
+      <Paper elevation={0} sx={sx}>
+        <div style={{ marginTop: "-4px" }}>
+          <MobileDatePicker
+            className="datepicker"
+            leftArrowButtonText="前月"
+            rightArrowButtonText="翌月"
+            label={props.label}
+            inputFormat={inpformat}
+            mask={mask}
+            toolbarFormat="yyyy年MM月"
+            value={rp.data[rp.field]}
+            onChange={(newValue: Date | null) =>
+              props.onChange(props.id, `${newValue || ""}`)
+            }
+            renderInput={(params) => (
+              <TextField
+                {...params}
+                label=""
+                placeholder={props.label}
+                variant="outlined"
+                size="small"
+              />
+            )}
+          />
         </div>
       </Paper>
     </LocalizationProvider>
@@ -258,14 +753,14 @@ export const FieldDatePicker = (props: FieldEditProps) => {
 
 // ----- カラーボックス
 type colboxProps = {
+  id: string;
   width: number;
   height: number;
   color: string;
   checked?: boolean;
   selected?: boolean;
-  abicon?: string;
-  icon_sx?: any;
-  onClick: (color: string) => void;
+  onClick: (id: string) => void;
+  children: React.ReactNode;
 };
 export const ColorBox = (props: colboxProps) => {
   let fontsize = props.width < props.height ? props.width : props.height;
@@ -286,16 +781,9 @@ export const ColorBox = (props: colboxProps) => {
     sx["borderColor"] = "black";
     sx["borderWidth"] = 1;
   }
-  let iconsx = {};
-  if (props.icon_sx) {
-    iconsx = { ...props.icon_sx };
-  }
 
   return (
-    <Box
-      onClick={(e) => props.onClick(props.abicon ? props.abicon : props.color)}
-      sx={sx}
-    >
+    <Box onClick={(e) => props.onClick(props.id)} sx={sx}>
       <div
         style={{
           color: "white",
@@ -305,9 +793,79 @@ export const ColorBox = (props: colboxProps) => {
           fontSize: fontsize
         }}
       >
-        {props.checked && <>✔</>}
-        {props.abicon && <ABIcon name={props.abicon} sx={iconsx} />}
+        {props.children}
       </div>
     </Box>
+  );
+};
+
+interface TagSetterProps extends EditPropsBase {
+  options: string[];
+  backAroundColor?: string;
+}
+
+export const TagSetter = (props: TagSetterProps) => {
+  let rp = ReformField(props.data, props.id);
+
+  let currVal = rp.data[rp.field];
+
+  let options = props.options;
+  // if ((!options || options.length === 0) && currVal.length) {
+  //   if (Array.isArray(currVal)) options = currVal;
+  //   else options = currVal.split(/,/);
+  // }
+  // options = ["なんだ", "かんだ", "どーした", "こーした"];
+  let bac = props.backAroundColor ? props.backAroundColor : "white";
+
+  let text_sx = {};
+
+  const variant = props.variant || "outlined";
+  if (variant === "standard") {
+    text_sx = { ...text_sx, pt: 1 };
+  }
+
+  return (
+    <Paper
+      elevation={0}
+      sx={{
+        width: "100%",
+        my: 1.1,
+        p: 0,
+        borderStyle: "solid",
+        borderColor: bac,
+        borderWidth: "2px 0px 0px 0px"
+      }}
+    >
+      <Autocomplete
+        style={{ marginTop: "-4px" }}
+        multiple
+        id={props.id}
+        options={options}
+        getOptionLabel={(option) => option}
+        noOptionsText={"..."}
+        defaultValue={currVal}
+        onChange={(event, newValue) => {
+          props.onChange(props.id, newValue, event);
+        }}
+        onInputChange={(event, newInputValue, reason) => {
+          if (newInputValue) {
+          }
+        }}
+        freeSolo={true}
+        forcePopupIcon={true}
+        size="small"
+        //componentsProps={{clearIndicator:{sx:{width:"0.9em",height:"0.9em"}}}}
+        filterSelectedOptions
+        renderInput={(params) => (
+          <TextField
+            {...params}
+            label=""
+            placeholder="" //{props.label}
+            variant={variant}
+            sx={text_sx}
+          />
+        )}
+      />
+    </Paper>
   );
 };

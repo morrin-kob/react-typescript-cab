@@ -12,6 +12,7 @@ import Link from "@mui/material/Link";
 import PulldownMenu from "./PulldownMenuButton";
 import { reformText } from "../AppSettings";
 import Alert from "@mui/material/Alert";
+import Grid from "@mui/material/Grid";
 
 import FormControl from "@mui/material/FormControl";
 import InputLabel from "@mui/material/InputLabel";
@@ -186,7 +187,7 @@ function LoginButton(props: LoginButtonProps) {
     setShowPassword(!showPassword);
   };
 
-  const handleMouseDownPassword = (event) => {
+  const handleMouseDownPassword = (event: React.MouseEvent<unknown>) => {
     event.preventDefault();
   };
 
@@ -372,7 +373,7 @@ function AccountButton(props: any) {
       popupId="acc-settings"
       bgcolor="#303030"
       icon={AccountCircle}
-      iconColor="#c00000"
+      iconColor="var(--col-offical)"
       text={user.getUserName()}
       items={items}
     />

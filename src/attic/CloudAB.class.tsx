@@ -6,7 +6,7 @@ import ABRecDialog, {
   RecordType,
   ABRecEditStateType,
   ReformName
-} from "./ABRecord";
+} from "./ABRecDialog";
 import ABSettings from "./ABFunctions";
 import CheckableEditableTable, {
   CETColumnType

@@ -11,6 +11,7 @@ import TableRow from "@mui/material/TableRow";
 import Box from "@mui/material/Box";
 import Checkbox from "@mui/material/Checkbox";
 import Typography from "@mui/material/Typography";
+import Avatar from "@mui/material/Avatar";
 import IconButton from "@mui/material/IconButton";
 import EditIcon from "@mui/icons-material/Edit";
 import Tooltip from "@mui/material/Tooltip";
@@ -395,13 +396,12 @@ export default function CheckableEditableTable(
                         }
                       >
                         {column.image ? (
-                          <img
+                          <Avatar
                             src={row[column.id]}
-                            style={{
+                            sx={{
                               width: column.minWidth,
                               height: column.minWidth
                             }}
-                            alt=""
                           />
                         ) : (
                           <div style={{ minWidth: column.minWidth }}>

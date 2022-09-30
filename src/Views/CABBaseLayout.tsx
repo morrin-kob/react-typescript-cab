@@ -3,7 +3,7 @@ import * as React from "react";
 import { Component, ReactNode, useContext } from "react";
 import AppHeader, { linkType } from "../components/AppHeader";
 import AppFooter from "../components/AppFooter";
-import { AccountButton } from "../components/AccountPalette";
+import { AccountButton } from "../components/AccountPalette2";
 import "../App.css";
 import { UserContextProvider } from "../Account";
 import { AppVal, ContentsPropsType } from "../AppSettings";

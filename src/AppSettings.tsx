@@ -3,6 +3,7 @@
 //
 
 import { SvgIcon } from "@mui/material";
+import { DOMElement } from "react";
 
 const AppVal = {
   AppTitle: "なんちゃってFCAB",
@@ -47,7 +48,7 @@ type ContentsPropsType = {
   tags?: string;
   id: string;
   name: string;
-  use: "private" | "corp";
+  use?: "private" | "corp";
   color?: string;
   icon?: string;
   command?: "newrec" | "import" | "export" | "share" | "delete";
@@ -78,9 +79,8 @@ function reformResponse(resp: any) {
 
   let scInMessage = "400";
   if (data["message"]) {
-    if (data["message"].match(/status code (\d+)/)) {
-      scInMessage = RegExp.$1;
-    }
+    let mr = data["message"].match(/status code (\d+)/);
+    if (mr) scInMessage = mr[1];
   }
   let statusCode = data["status"] || data["statusCode"] || scInMessage;
   if (parseInt(statusCode, 10) >= 400) {
@@ -123,10 +123,11 @@ const httpFetch = (
   method: "GET" | "POST" | "PUT" | "DELETE",
   params: {},
   postdata: {},
-  callbackfunc: (data: {}) => void
+  callbackfunc: (data: {}) => void,
+  headers: {} = {}
 ) => {
-  let headers = {};
-  if (method !== "GET") {
+  //  let headers = {};
+  if (method !== "GET" && "Content-Type" in headers === false) {
     headers["Content-Type"] = "application/json";
   }
 
@@ -166,9 +167,8 @@ const httpFetch = (
 //
 // Promise返しの fetch のラップ関数
 //
-const fetchGet = async (endpoint: string, params: Object) => {
+const fetchGet = async (endpoint: string, params: {}, headers: {} = {}) => {
   let url = endpoint;
-  let headers = {};
   let paramlist = reformParams("GET", params, headers, {});
   if (paramlist.length) {
     url += `?${paramlist}`;

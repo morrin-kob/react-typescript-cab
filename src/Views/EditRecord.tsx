@@ -2,24 +2,20 @@
 import * as React from "react";
 import { useContext, useRef, ReactNode, Children } from "react";
 import { UserContext, UserContextType } from "../Account";
-import Dialog from "@mui/material/Dialog";
-import DialogTitle from "@mui/material/DialogTitle";
-import DialogActions from "@mui/material/DialogActions";
-import DialogContent from "@mui/material/DialogContent";
-import PopupProgress from "../components/PopupProgress";
-import ButtonBase from "@mui/material/ButtonBase";
-import Button from "@mui/material/Button";
-import Box from "@mui/material/Box";
-import AddLocationAltOutlinedIcon from "@mui/icons-material/AddLocationAltOutlined";
-import CloseIcon from "@mui/icons-material/Close";
-import IconButton from "@mui/material/IconButton";
-import Table from "@mui/material/Table";
-import TableBody from "@mui/material/TableBody";
-import TableCell from "@mui/material/TableCell";
-import TableRow from "@mui/material/TableRow";
-import Grid from "@mui/material/Grid";
-import Paper from "@mui/material/Paper";
-import Divider from "@mui/material/Divider";
+import {
+  AddrBlock,
+  TelephoneBlock,
+  EmailBlock,
+  OrganizationBlock,
+  WebUrlBlock,
+  ExternalIDBlock,
+  FamilyBlock,
+  ExtendPropsBlock,
+  PictureBlock,
+  RecordType,
+  loadRecord,
+  PersonalPicture
+} from "../CABDataTypes";
 import {
   EditFieldTitle,
   SquareIconButton,
@@ -27,18 +23,29 @@ import {
   FieldTextArea,
   FieldComboBox,
   FieldDatePicker,
+  TagSetter,
+  FieldCheckboxGroup,
+  FieldRadioButtonsGroup,
   ReformField
 } from "../components/EditParts";
+import { isHomeAddress } from "../AppSettings";
 
-import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown";
+import PopupProgress from "../components/PopupProgress";
+import Button from "@mui/material/Button";
+import Box from "@mui/material/Box";
+import Grid from "@mui/material/Grid";
+import Paper from "@mui/material/Paper";
+import Tooltip from "@mui/material/Tooltip";
+import Divider from "@mui/material/Divider";
 import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
 import KeyboardArrowUpIcon from "@mui/icons-material/KeyboardArrowUp";
+import MoreHorizIcon from "@mui/icons-material/MoreHoriz";
 import AddIcon from "@mui/icons-material/Add";
 import RemoveIcon from "@mui/icons-material/Remove";
 import Fab from "@mui/material/Fab";
 import ManageSearchIcon from "@mui/icons-material/ManageSearch";
+import DeleteForeverIcon from "@mui/icons-material/DeleteForever";
 
-import { AppVal, ContentsPropsType, isHomeAddress } from "../AppSettings";
 import CircularProgress from "@mui/material/CircularProgress";
 import { SvgIcon } from "@mui/material";
 import DefPersonImg from "../assets/images/person.png";
@@ -47,713 +54,33 @@ import { BrowserView, MobileView } from "react-device-detect";
 
 import { ThemeProvider, createTheme } from "@mui/material/styles";
 import type {} from "@mui/x-date-pickers/themeAugmentation";
-
 import MessageBox, { MessageBoxProps } from "../components/MessageBox";
 
-export type AddrBlock = {
-  kindof?: "home" | "office" | null;
-  zipcode?: string;
-  region?: string;
-  city?: string;
-  street?: string;
-  building?: string;
-  station?: string;
-  label?: string;
-  geolocation?: object;
-};
-export type TelephoneBlock = {
-  kindof: "tel" | "fax" | "cell" | "offtel" | "offfax" | "offcell" | null;
-  number: string;
-  label?: string;
-};
-export type EmailBlock = {
-  kindof: "cell" | "home" | "office";
-  address: string;
-  label?: string;
-};
-export type OrganizationBlock = {
-  name: string;
-  title?: string;
-  dept1?: string;
-  dept2?: string;
-  kana?: string;
-};
-export type WebUrlBlock = {
-  kindof: "profile" | "blog" | "hp" | "office" | null;
-  label?: string;
-  url: string;
-};
-export type ExternalIDBlock = {
-  id: string;
-  client_id: string;
-};
-export type FamilyBlock = {
-  lastname: string;
-  firstname: string;
-  lastkana: string;
-  firstkana: string;
-  suffix?: string;
-  gender?: string;
-  birthdate?: string | null;
-};
-export type ExtendPropsBlock = {
-  client_id: string;
-  data: {};
-};
+const bgcolEditBlock = "#f0f0f0";
+const bgcolEditAround = "#fafafa";
 
-export type PictureBlock = {
-  image: string; // 変なID　like 62d7aaeb4e79f804b678aff6
-  exif: {
-    taken: object | null;
-  };
-  thum_size: number[];
-  image_size: number[];
-};
-
-export type RecordType = {
-  id: string;
-  code?: string;
-  external_ids?: ExternalIDBlock[];
-  pictures?: PictureBlock[];
-  created_at?: string;
-  updated_at?: string;
-  created_by?: string;
-  updated_by?: string;
-  etag?: string;
-  face_picture?: PictureBlock;
-  owner_id?: string;
-  tags?: string[];
-  deleted?: boolean;
-
-  firstname?: string;
-  lastname?: string;
-  firstkana?: string;
-  lastkana?: string;
-  suffix?: string;
-  gender?: string;
-  birthdate?: string;
-
-  joint_names?: FamilyBlock[];
-  organization?: OrganizationBlock;
-  addresses?: AddrBlock[];
-  emails?: EmailBlock[];
-  telephones?: TelephoneBlock[];
-  weburls?: WebUrlBlock[];
-  memo?: string;
-
-  extendprops?: ExtendPropsBlock[];
-};
-
-type ABRecDialogPropsType = {
-  recid: string;
-  name: string;
-  user: UserContextType;
-  abook: ContentsPropsType;
-  onEdit: (abookId: string, rec: RecordType) => void;
-  onDeleted: (abookId: string, rec: RecordType) => void;
-  onCopy: (abookId: string, rec: RecordType) => void;
-  onSend: (abookId: string, rec: RecordType) => void;
-  onClose: () => void;
-};
-
-type ABRecEditStateType = {
-  abid: string;
-  recid: string;
-  name: string;
-  status?: "loading" | "success" | "error";
-  statusText?: string;
-  data?: RecordType;
-};
-
-export const ReformName = (rec: RecordType) => {
-  let firstname = rec.firstname;
-  let lastname = rec.lastname;
-
-  if (lastname && firstname) {
-    if (firstname.match(/[^a-zA-Z\-=:]/) || lastname.match(/[^a-zA-Z\-=:]/)) {
-      firstname = rec.lastname;
-      lastname = rec.firstname;
-    }
-  }
-
-  let name = firstname || "";
-  if (lastname) {
-    if (name) name += " ";
-    name += lastname;
-  }
-  return name;
-};
-export const ReformNameYomi = (rec: RecordType) => {
-  let firstname = rec.firstname;
-  let lastname = rec.lastname;
-  let firstnameYomi = rec.firstkana;
-  let lastnameYomi = rec.lastkana;
-
-  if (lastname && firstname) {
-    if (firstname.match(/[^a-zA-Z\-=:]/) || lastname.match(/[^a-zA-Z\-=:]/)) {
-      firstnameYomi = rec.lastkana;
-      lastnameYomi = rec.firstkana;
-    }
-  }
-
-  let name = firstnameYomi || "";
-  if (lastnameYomi) {
-    if (name) name += " ";
-    name += lastnameYomi;
-  }
-  return name;
-};
-
-type RecDataProps = {
-  title: string;
-  data: string;
-  icon?: typeof SvgIcon | null;
-  link?: string;
-  command: string;
-};
-
-type createDataType = (
-  title: string,
-  data: string,
-  icon?: typeof SvgIcon | null,
-  link?: string,
-  command?: string
-) => RecDataProps;
-
-const createData: createDataType = (
-  title,
-  data,
-  icon = null,
-  link = "",
-  command = ""
-) => {
-  return { title, data, icon, link, command };
-};
-
-function PersonalPicture(props: {
-  abId: string;
-  rec: RecordType;
-  cx: number;
-  cy: number;
-}) {
-  const user = useContext(UserContext);
-
-  const [imgurl, setImgurl] = React.useState("");
-  let url = "";
-  if (!imgurl && props.rec.face_picture && props.rec.face_picture.image) {
-    url = `${user.getEpm()}/p/get_address_face/`; //get_address_pict
-    if (isHomeAddress(props.abId)) {
-      url += `homeaddress/${props.rec.id}`;
-    } else {
-      url += `${props.rec.id}/${props.rec.face_picture.image}.jpg?t=T`;
-    }
-  }
-
-  let cont = (
-    <img
-      src={DefPersonImg}
-      style={{ width: props.cx, height: props.cy }}
-      alt=""
-    />
-  );
-  if (url) {
-    cont = <img src={url} style={{ width: props.cx }} alt="" />;
-  }
-
-  return cont;
-}
-
-//
-// 1レコードの詳細データの出力
-//
-const OutRecord = (rec: RecordType) => {
-  const rows = [];
-
-  if (rec.tags && rec.tags.length) {
-    rows.push(createData("タグ", rec.tags.join(" ")));
-  }
-
-  const furigana = ReformNameYomi(rec);
-  if (furigana) rows.push(createData("フリガナ", furigana));
-
-  if (rec.organization) {
-    if (rec.organization.name)
-      rows.push(createData("勤務先", rec.organization.name));
-    if (rec.organization.kana)
-      rows.push(createData("勤務先（カナ）", rec.organization.kana));
-    if (rec.organization.dept1)
-      rows.push(createData("部署", rec.organization.dept1));
-    if (rec.organization.dept2)
-      rows.push(createData("部署2", rec.organization.dept2));
-    if (rec.organization.title)
-      rows.push(createData("役職", rec.organization.title));
-  }
-  if (rec.addresses && rec.addresses.length) {
-    rec.addresses.map((address) => {
-      let title = "住所";
-      if (address.kindof === "home") {
-        //"home" | "office"
-        title += "[自宅]";
-      } else if (address.kindof === "office") {
-        //"home" | "office"
-        title += "[勤務先]";
-      } else {
-        if (address.label) title += `[${address.label}]`;
-        else title += "[その他]";
-      }
-
-      let addressData = "";
-      let icon: typeof SvgIcon | null = null;
-      let link = "";
-      let command = "";
-      if (address.zipcode && address.zipcode.length)
-        addressData += `〒${address.zipcode}\n`;
-      let addr = `${address.region ? address.region : ""}${
-        address.city ? address.city : ""
-      }${address.street ? address.street : ""}`;
-      if (address.building) {
-        if (addr) addr += "<br>";
-        addr += address.building;
-      }
-      if (addr) addressData += addr;
-      if (addressData) {
-        link = addressData.replace(/\n/, "+").replace(/<br>/g, " ");
-        link = `https://www.google.co.jp/maps/place/${encodeURIComponent(
-          link
-        )}`;
-        icon = AddLocationAltOutlinedIcon;
-      }
-
-      rows.push(createData(title, addressData, icon, link, command));
-      return "";
-    });
-    // 電話番号
-    if (rec.telephones && rec.telephones.length) {
-      let telData = {};
-      let order: string[] = [];
-      rec.telephones.map((tel) => {
-        // 自宅TEL:tel/自宅FAX:fax/個人携帯:cell/会社TEL:offtel/会社FAX:offfax/会社携帯:offcell/その他:null
-        let title =
-          tel.kindof === "tel"
-            ? "電話[自宅TEL]"
-            : tel.kindof === "fax"
-            ? "電話[自宅FAX]"
-            : tel.kindof === "cell"
-            ? "電話[個人携帯]"
-            : tel.kindof === "offtel"
-            ? "電話[会社TEL]"
-            : tel.kindof === "offfax"
-            ? "電話[会社FAX]"
-            : tel.kindof === "offcell"
-            ? "電話[会社携帯]"
-            : tel.label
-            ? `電話[${tel.label}]`
-            : "電話[その他]";
-        if (telData[title]) {
-          telData[title].push(tel.number);
-        } else {
-          order.push(title);
-          telData[title] = [tel.number];
-        }
-
-        return "";
-      });
-
-      order.map((title) => {
-        let numbers = telData[title].join("\n");
-        rows.push(createData(title, numbers));
-        return "";
-      });
-    }
-
-    // e-mail
-    if (rec.emails && rec.emails.length) {
-      let emailData = {};
-      let order: string[] = [];
-      rec.emails.map((email) => {
-        // 携帯:cell/自宅:home/会社:office
-        let title =
-          email.kindof === "home"
-            ? "Eメール[自宅]"
-            : email.kindof === "cell"
-            ? "Eメール[携帯]"
-            : email.kindof === "office"
-            ? "Eメール[会社]"
-            : email.label
-            ? `Eメール[${email.label}]`
-            : "Eメール[その他]";
-        if (emailData[title]) {
-          emailData[title].push(email.address);
-        } else {
-          order.push(title);
-          emailData[title] = [email.address];
-        }
-
-        return "";
-      });
-
-      order.map((title) => {
-        let emails = emailData[title].join("\n");
-        rows.push(createData(title, emails));
-        return "";
-      });
-    }
-
-    // webUrl
-    if (rec.weburls && rec.weburls.length) {
-      let urlData = {};
-      let order: string[] = [];
-      rec.weburls.map((web) => {
-        // URL - 種別(プロフィール:profile/ブログ:blog/ホームページ:hp/会社:office/その他:null)
-        let title =
-          web.kindof === "profile"
-            ? "プロフィール"
-            : web.kindof === "blog"
-            ? "ブログ"
-            : web.kindof === "hp"
-            ? "ホームページ"
-            : web.kindof === "office"
-            ? "会社"
-            : web.label
-            ? `Eメール[${web.label}]`
-            : "Eメール[その他]";
-        if (urlData[title]) {
-          urlData[title].push(web.url);
-        } else {
-          order.push(title);
-          urlData[title] = [web.url];
-        }
-
-        return "";
-      });
-
-      order.map((title) => {
-        let weburls = urlData[title].join("\n");
-        rows.push(createData(title, weburls));
-        return "";
-      });
-    }
-    // 写真
-
-    // 最終更新
-  }
-
-  return rows;
-};
-
-const loadRecord = (
-  user: UserContextType,
-  abId: string,
-  recId: string,
-  onLoad: (json: {}) => void
-) => {
-  let url = `${user.getEpt()}/`;
-  if (isHomeAddress(abId)) {
-    url += `homeaddress/${recId}`;
-  } else {
-    url += `address/${recId}`;
-  }
-  let params = {
-    atk: user.getAToken(),
-    ept: user.getEpm(),
-    uag: user.getUag()
-  };
-
-  user.FetchWithRefreshedRetry(url, "GET", params, {}, (json) => {
-    onLoad(json);
-  });
-};
-
-type statusType = {
-  status: "loading" | "success" | "error";
-  text: string;
-};
-
-//
-// １レコードの詳細を表示するダイアログ
-//　編集はまた別の　ページorダイアログ
-const ABRecDialog = (props: ABRecDialogPropsType) => {
-  const [open, setOpen] = React.useState(true);
-  const [status, setStatus] = React.useState<statusType>({
-    status: "loading",
-    text: ""
-  });
-  const [recdata, setRecData] = React.useState({ id: "" });
-  const [progress, setProgress] = React.useState(false);
-  const [msgbox, setMsgbox] = React.useState<MessageBoxProps>({
-    open: false,
-    caption: "",
-    message: ""
-  });
-
-  const user = useContext(UserContext);
-
-  const cancelMsgBox = () => {
-    setMsgbox({ ...msgbox, open: false });
-  };
-
-  const dispError = (json: {}) => {
-    let error: string = json["error"] || json["statusText"] || "load error";
-    let mbinfo: MessageBoxProps = {
-      open: true,
-      caption: "削除に失敗しました",
-      message: error,
-      icon: "error",
-      options: [
-        {
-          text: "OK",
-          handler: () => {
-            cancelMsgBox();
-          }
-        }
-      ],
-      onCancel: () => {
-        cancelMsgBox();
-      }
-    };
-    setMsgbox(mbinfo);
-  };
-
-  const handleClose = () => {
-    setOpen(false);
-    props.onClose();
-  };
-
-  const handleEdit = () => {
-    handleClose();
-    console.log(`Edit:${JSON.stringify(recdata)}`);
-    props.onEdit(props.abook.id, recdata);
-  };
-
-  const execDelete = () => {
-    setProgress(true);
-
-    let url = `${user.getEpt()}/address/${props.recid}`;
-    let params = {
-      atk: user.getAToken(),
-      ept: user.getEpm(),
-      uag: user.getUag()
-    };
-    if ("etag" in recdata) {
-      params["If-Match"] = recdata["etag"];
-    }
-    user.FetchWithRefreshedRetry(
-      url,
-      "DELETE",
-      params,
-      { id: props.recid },
-      (json) => {
-        setProgress(false);
-        if ("data" in json) {
-          setOpen(false);
-          props.onClose();
-          props.onDeleted(recdata.id, json["data"]);
-        } else {
-          dispError(json);
-        }
-      }
-    );
-  };
-
-  const handleDelete = () => {
-    const name = ReformName(recdata);
-    let mbdata: MessageBoxProps = {
-      open: true,
-      caption: "確認",
-      message: `${name}さんのレコードを削除します`,
-      icon: "question",
-      options: [
-        {
-          text: "確認",
-          handler: () => {
-            cancelMsgBox();
-            execDelete();
-          }
-        }
-      ],
-      onCancel: () => {
-        cancelMsgBox();
-      }
-    };
-    setMsgbox(mbdata);
-  };
-
-  if (open === true && status.status === "loading") {
-    if (recdata.id === props.recid) {
-      if (recdata.id) {
-        setStatus({ status: "success", text: "ok" });
-      }
-    } else {
-      loadRecord(user, props.abook.id, props.recid, (json) => {
-        if ("data" in json) {
-          setRecData(json["data"]);
-          setStatus({ status: "success", text: "ok" });
-        } else {
-          let error: string =
-            json["error"] || json["statusMessage"] || "ロードに失敗しました";
-          setStatus({ status: "error", text: error });
-        }
-      });
-    }
-  }
-
-  let name = props.name;
-  let cont = <></>;
-  if (status.status === "loading") {
-    if (open) {
-      cont = (
-        <Box
-          sx={{ width: "40em", maxWidth: "80%", mt: 10, textAlign: "center" }}
-        >
-          <div className="textcenter">loading...</div>
-          <CircularProgress />
-        </Box>
-      );
-    }
-  } else if (status.status === "success") {
-    const rec: RecordType = recdata;
-    name = ReformName(rec);
-
-    const rows = OutRecord(rec);
-
-    //createData("name", name), createData("dessert", "Cupcake")];
-
-    cont = (
-      <div>
-        <Box display="grid" gridTemplateColumns="repeat(12, 1fr)" gap={2}>
-          <Box gridColumn="span 2">
-            <PersonalPicture abId={props.abook.id} rec={rec} cx={64} cy={64} />
-          </Box>
-          <Box gridColumn="span 10">
-            <Table aria-label="simple table">
-              <TableBody>
-                {rows.map((row) => (
-                  <TableRow key={row.title} sx={{ height: "1.2em" }}>
-                    <TableCell
-                      align="left"
-                      sx={{ py: 1, width: "10em", height: "1.2em" }}
-                    >
-                      {row.title}
-                    </TableCell>
-                    <TableCell
-                      size="medium"
-                      align="left"
-                      sx={{ py: 1, height: "1.2em" }}
-                    >
-                      {row.data.split(/\n|<br>|<br \/>/i).map((str) => {
-                        return <div>{str}</div>;
-                      })}
-                    </TableCell>
-                    <TableCell
-                      size="medium"
-                      align="left"
-                      sx={{ py: 1, width: "2em" }}
-                    >
-                      {row.icon && row.link && (
-                        <a href={row.link} target="cabhref">
-                          <row.icon />
-                        </a>
-                      )}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </Box>
-        </Box>
-      </div>
-    );
-  } else if (status.status === "error") {
-    cont = (
-      <div style={{ width: "calc( 80vw )" }}>
-        <h3>failed</h3>
-        <p>{status.text}</p>
-      </div>
-    );
-  }
-
-  type DlgButtonProps = {
-    caption: string;
-    color:
-      | "inherit"
-      | "primary"
-      | "secondary"
-      | "success"
-      | "error"
-      | "info"
-      | "warning";
-    onclick: () => void;
-  };
-
-  type MakeButtonType = (
-    caption: string,
-    color:
-      | "inherit"
-      | "primary"
-      | "secondary"
-      | "success"
-      | "error"
-      | "info"
-      | "warning",
-    onclick: () => void
-  ) => DlgButtonProps;
-
-  const makeButton: MakeButtonType = (caption, color, onclick) => {
-    return { caption: caption, color: color, onclick: onclick };
-  };
-
-  const buttons: DlgButtonProps[] = [];
-  if (status.status === "success") {
-    buttons.push(makeButton("削除", "warning", handleDelete));
-    buttons.push(makeButton("他のユーザに送信", "primary", handleClose));
-    buttons.push(makeButton("コピー", "primary", handleClose));
-    buttons.push(makeButton("編集", "success", handleEdit));
-  }
-  buttons.push(makeButton("閉じる", "primary", handleClose));
-
-  let cxDlg = isMobile ? "100%" : "70%";
-
-  return (
-    <Dialog open={open} onClose={handleClose}>
-      <DialogTitle sx={{ width: { cxDlg }, maxWidth: 600 }}>
-        {name}
-        <IconButton
-          aria-label="close"
-          onClick={handleClose}
-          sx={{
-            color: "white",
-            position: "absolute",
-            right: 8,
-            top: 8
-          }}
-        >
-          <CloseIcon />
-        </IconButton>
-      </DialogTitle>
-      <DialogContent>{cont}</DialogContent>
-      <DialogActions>
-        {buttons.map((button) => {
-          return (
-            <Button
-              color={button.color}
-              variant="contained"
-              onClick={button.onclick}
-            >
-              {button.caption}
-            </Button>
-          );
-        })}
-      </DialogActions>
-      <MessageBox {...msgbox} />
-      <PopupProgress open={progress} type="circle" />
-    </Dialog>
-  );
+const suffixOptins = [
+  { value: "様" },
+  { value: "殿" },
+  { value: "御中" },
+  { value: "行" },
+  { value: "宛" },
+  { value: "先生" },
+  { value: "君" },
+  { value: "くん" },
+  { value: "さん" },
+  { value: "ちゃん" }
+];
+let taglist = {
+  友人: 1,
+  親戚: 1,
+  同僚: 1
 };
 
 type EditBlockProp = {
   abid: string;
   rec: RecordType;
-  onChangeField: (field: string, value: string) => void;
+  onChangeField: (field: string, value: string | string[]) => void;
   onChangeData?: (rec: {}) => void;
 };
 
@@ -764,13 +91,24 @@ const PictAreaWidth = PictWidth + PictMargin;
 const EditBlockName = (props: EditBlockProp) => {
   const [detail, setDetail] = React.useState<boolean>(false);
 
+  //taglist
+  const currTags = props.rec["tags"];
+  if (currTags) {
+    let arr;
+    if (Array.isArray(currTags)) arr = currTags;
+    else arr = (currTags as string).split(/,/);
+    arr.forEach((tag) => {
+      taglist[tag] = 1;
+    });
+  }
+
   return (
     <Grid container>
       <Grid item sx={{ width: `calc( 100% - ${PictAreaWidth}px )` }}>
         <Paper
           component="form"
           sx={{
-            backgroundColor: "#f0f0f0"
+            backgroundColor: bgcolEditBlock
           }}
         >
           <Grid container={true} columns={15}>
@@ -780,59 +118,83 @@ const EditBlockName = (props: EditBlockProp) => {
             </Grid>
             <Grid item={true} xs={4} sx={{ px: 1 }}>
               <FieldEditBox
-                rec={props.rec}
+                data={props.rec}
+                id="lastname"
                 label="姓"
-                field="lastname"
-                onChangeField={props.onChangeField}
+                onChange={props.onChangeField}
               />
             </Grid>
             <Grid item={true} xs={4} sx={{ px: 1 }}>
               <FieldEditBox
-                rec={props.rec}
+                data={props.rec}
+                id="firstname"
                 label="名"
-                field="firstname"
-                onChangeField={props.onChangeField}
+                onChange={props.onChangeField}
               />
             </Grid>
             <Grid item={true} xs={4} sx={{ px: 1 }}>
               <FieldComboBox
-                rec={props.rec}
+                data={props.rec}
+                id="suffix"
                 label="敬称"
-                field="suffix"
                 editable={true}
-                options={[
-                  { data: "様" },
-                  { data: "殿" },
-                  { data: "御中" },
-                  { data: "行" },
-                  { data: "宛" },
-                  { data: "先生" },
-                  { data: "君" },
-                  { data: "くん" },
-                  { data: "さん" },
-                  { data: "ちゃん" }
-                ]}
-                onChangeField={props.onChangeField}
+                backAroundColor={bgcolEditAround}
+                options={suffixOptins}
+                onChange={props.onChangeField}
               />
             </Grid>
+
+            {/* ------ テストの行 ------ */}
+            <Grid item={true} xs={3} sx={{ pl: 2 }}>
+              <EditFieldTitle title="チェック" />
+            </Grid>
+            <Grid item={true} xs={11} sx={{ pl: 1 }}>
+              <FieldRadioButtonsGroup
+                data={props.rec}
+                id="radiotest"
+                label="ラジオの時間"
+                onChange={props.onChangeField}
+                lplacement="end"
+                default_val="Netflix"
+                options={[
+                  { label: "Netflix", value: "nf" },
+                  { label: "Disney+", value: "dp" },
+                  { label: "Amazon Prime", value: "ap" },
+                  { label: "Hulu", value: "hl" }
+                ]}
+              />
+            </Grid>
+            <Grid item={true} xs={3} sx={{ pl: 2 }}>
+              <EditFieldTitle title="PWチェック" />
+            </Grid>
+            <Grid item={true} xs={11} sx={{ pl: 1 }}>
+              <FieldEditBox
+                data={props.rec}
+                id="password"
+                label="password"
+                type="password"
+                onChange={props.onChangeField}
+              />
+            </Grid>
+
             {/* ------ フリガナの行 ------ */}
             <Grid item={true} xs={3} sx={{ pl: 2 }}>
               <EditFieldTitle title="フリガナ" />
             </Grid>
             <Grid item={true} xs={4} sx={{ px: 1 }}>
               <FieldEditBox
-                rec={props.rec}
+                data={props.rec}
+                id="lastkana"
                 label="姓フリガナ"
-                field="lastkana"
-                onChangeField={props.onChangeField}
+                onChange={props.onChangeField}
               />
             </Grid>
             <Grid item={true} xs={4} sx={{ px: 1 }}>
               <FieldEditBox
-                rec={props.rec}
+                data={props.rec}
+                id="firstkana"
                 label="名フリガナ"
-                field="firstkana"
-                onChangeField={props.onChangeField}
+                onChange={props.onChangeField}
               />
             </Grid>
             <Grid item={true} xs={4} sx={{ px: 1 }}></Grid>
@@ -846,26 +208,39 @@ const EditBlockName = (props: EditBlockProp) => {
               <EditFieldTitle title="タグ" />
             </Grid>
             <Grid item={true} xs={10} sx={{ px: 1 }}>
-              <FieldEditBox
-                rec={props.rec}
+              <TagSetter
+                data={props.rec}
+                id="tags"
                 label="タグ"
-                field="tags"
-                onChangeField={props.onChangeField}
+                options={Object.keys(taglist)}
+                onChange={(id, value, e) => {
+                  if (value) {
+                    let arr;
+                    if (Array.isArray(value)) arr = value;
+                    else arr = (value as string).split(/,/);
+                    arr.forEach((tag) => {
+                      taglist[tag] = 1;
+                    });
+                  }
+                  props.onChangeField(id, value);
+                }}
               />
             </Grid>
-            <Grid item={true} xs={2} sx={{ px: 2, mt: 0 }}>
+            <Grid item={true} xs={2} sx={{ px: 0, mt: 0 }}>
+              <div style={{ flexGrow: 1 }}></div>
               <SquareIconButton
                 id=""
                 variant="contained"
-                bgcolor="gray"
+                sx={{ backgoundColor: "gray" }}
                 onClick={(id) => {
                   setDetail(!detail);
                 }}
               >
-                {!detail ? <KeyboardArrowDownIcon /> : <KeyboardArrowUpIcon />}
+                <Tooltip title={detail ? "詳細を閉じる" : "詳細を開く"}>
+                  {!detail ? <MoreHorizIcon /> : <KeyboardArrowUpIcon />}
+                </Tooltip>
               </SquareIconButton>
             </Grid>
-
             {/* ------ 詳細の始まり ------ */}
             {detail && (
               <>
@@ -875,10 +250,10 @@ const EditBlockName = (props: EditBlockProp) => {
                 </Grid>
                 <Grid item={true} xs={5} sx={{ px: 1 }}>
                   <FieldDatePicker
-                    rec={props.rec}
+                    data={props.rec}
+                    id="birthdate"
                     label="誕生日"
-                    field="birthdate"
-                    onChangeField={props.onChangeField}
+                    onChange={props.onChangeField}
                   />
                 </Grid>
                 <Grid item={true} xs={2} sx={{ pl: 2 }}>
@@ -886,16 +261,16 @@ const EditBlockName = (props: EditBlockProp) => {
                 </Grid>
                 <Grid item={true} xs={4} sx={{ px: 1 }}>
                   <FieldComboBox
-                    rec={props.rec}
+                    data={props.rec}
+                    id="gender"
                     label="性別"
-                    field="gender"
                     editable={false}
                     options={[
-                      { data: "男性" },
-                      { data: "女性" },
-                      { data: "その他" }
+                      { value: "男性" },
+                      { value: "女性" },
+                      { value: "その他" }
                     ]}
-                    onChangeField={props.onChangeField}
+                    onChange={props.onChangeField}
                   />
                 </Grid>
 
@@ -905,10 +280,10 @@ const EditBlockName = (props: EditBlockProp) => {
                 </Grid>
                 <Grid item={true} xs={5} sx={{ px: 1 }}>
                   <FieldEditBox
-                    rec={props.rec}
+                    data={props.rec}
+                    id="code"
                     label="顧客コード"
-                    field="code"
-                    onChangeField={props.onChangeField}
+                    onChange={props.onChangeField}
                   />
                 </Grid>
                 <Grid item={true} xs={7} sx={{ px: 1 }}></Grid>
@@ -918,15 +293,15 @@ const EditBlockName = (props: EditBlockProp) => {
                   <EditFieldTitle title="メモ" />
                 </Grid>
                 {/* FieldTextArea */}
-                <Grid item={true} xs={8} sx={{ px: 1 }}>
+                <Grid item={true} xs={9} sx={{ px: 1 }}>
                   <FieldTextArea
-                    rec={props.rec}
+                    data={props.rec}
+                    id="memo"
                     label="メモ"
-                    field="memo"
-                    onChangeField={props.onChangeField}
+                    onChange={props.onChangeField}
                   />
                 </Grid>
-                <Grid item={true} xs={5} sx={{ px: 1 }}></Grid>
+                <Grid item={true} xs={4} sx={{ px: 1 }}></Grid>
                 <Grid item={true} xs={15} sx={{ px: 1 }}>
                   &nbsp;
                 </Grid>
@@ -998,7 +373,7 @@ const EditBlockOrg = (props: EditBlockProp) => {
             <Paper
               component="form"
               sx={{
-                backgroundColor: "#f0f0f0"
+                backgroundColor: bgcolEditBlock
               }}
             >
               <Grid container={true} columns={15}>
@@ -1007,10 +382,10 @@ const EditBlockOrg = (props: EditBlockProp) => {
                 </Grid>
                 <Grid item xs={10}>
                   <FieldEditBox
-                    rec={props.rec}
+                    data={props.rec}
+                    id="organization.name"
                     label="勤務先"
-                    field="organization.name"
-                    onChangeField={props.onChangeField}
+                    onChange={props.onChangeField}
                   />
                 </Grid>
                 <Grid item xs={2}></Grid>
@@ -1020,10 +395,10 @@ const EditBlockOrg = (props: EditBlockProp) => {
                 </Grid>
                 <Grid item xs={10}>
                   <FieldEditBox
-                    rec={props.rec}
+                    data={props.rec}
+                    id="organization.kana"
                     label="フリガナ"
-                    field="organization.kana"
-                    onChangeField={props.onChangeField}
+                    onChange={props.onChangeField}
                   />
                 </Grid>
                 <Grid item xs={2}></Grid>
@@ -1037,18 +412,18 @@ const EditBlockOrg = (props: EditBlockProp) => {
                 </Grid>
                 <Grid item xs={5} sx={{ pr: 0.5 }}>
                   <FieldEditBox
-                    rec={props.rec}
+                    data={props.rec}
+                    id="organization.dept1"
                     label="部署名1"
-                    field="organization.dept1"
-                    onChangeField={props.onChangeField}
+                    onChange={props.onChangeField}
                   />
                 </Grid>
                 <Grid item xs={5} sx={{ pl: 0.5 }}>
                   <FieldEditBox
-                    rec={props.rec}
+                    data={props.rec}
+                    id="organization.dept2"
                     label="部署名2"
-                    field="organization.dept2"
-                    onChangeField={props.onChangeField}
+                    onChange={props.onChangeField}
                   />
                 </Grid>
                 <Grid item xs={2}></Grid>
@@ -1058,10 +433,10 @@ const EditBlockOrg = (props: EditBlockProp) => {
                 </Grid>
                 <Grid item xs={7}>
                   <FieldEditBox
-                    rec={props.rec}
+                    data={props.rec}
+                    id="organization.title"
                     label="役職"
-                    field="organization.title"
-                    onChangeField={props.onChangeField}
+                    onChange={props.onChangeField}
                   />
                 </Grid>
                 <Grid item xs={5}></Grid>
@@ -1136,23 +511,23 @@ const EditBlockAddresses = (props: EditBlockProp) => {
               <Paper
                 component="form"
                 sx={{
-                  backgroundColor: "#f0f0f0"
+                  backgroundColor: bgcolEditBlock
                 }}
               >
                 <Grid container={true} columns={15}>
                   {/* ------ 分類の行 ------ */}
                   <Grid item xs={5} sx={{ pl: 2 }}>
                     <FieldComboBox
-                      rec={props.rec}
+                      data={props.rec}
                       label="分類"
+                      id={`addresses[${index}].kindof`}
                       editable={true}
                       options={[
-                        { label: "自宅", data: "home" },
-                        { label: "会社", data: "office" }
+                        { label: "自宅", value: "home" },
+                        { label: "会社", value: "office" }
                       ]}
-                      field={`addresses[${index}].kindof`}
                       fieldOnEdit={`addresses[${index}].label`}
-                      onChangeField={props.onChangeField}
+                      onChange={props.onChangeField}
                     />
                   </Grid>
                   <Grid item xs={10}></Grid>
@@ -1165,23 +540,24 @@ const EditBlockAddresses = (props: EditBlockProp) => {
 
                   <Grid item xs={5}>
                     <FieldEditBox
-                      rec={props.rec}
+                      data={props.rec}
+                      id={`addresses[${index}].zipcode`}
+                      type="tel"
                       label="郵便番号"
-                      field={`addresses[${index}].zipcode`}
-                      onChangeField={props.onChangeField}
+                      onChange={props.onChangeField}
                     />
                   </Grid>
                   <Grid item xs={1}>
                     <SquareIconButton
                       id={`addresses[${index}].zipcode`}
                       variant="outlined"
-                      bgcolor="white"
+                      sx={{ backgroundColor: "white" }}
                       onClick={(id) => {
                         let rp = ReformField(
                           props.rec,
                           `addresses[${index}].zipcode`
                         );
-                        alert(`〒変換:${rp.rec[rp.field]}`);
+                        alert(`〒変換:${rp.data[rp.field]}`);
                       }}
                     >
                       <ManageSearchIcon />
@@ -1199,26 +575,26 @@ const EditBlockAddresses = (props: EditBlockProp) => {
                   </Grid>
                   <Grid item xs={3} sx={{ pr: 0.5 }}>
                     <FieldEditBox
-                      rec={props.rec}
+                      data={props.rec}
+                      id={`addresses[${index}].region`}
                       label="都道府県"
-                      field={`addresses[${index}].region`}
-                      onChangeField={props.onChangeField}
+                      onChange={props.onChangeField}
                     />
                   </Grid>
                   <Grid item xs={3} sx={{ pl: 0.5 }}>
                     <FieldEditBox
-                      rec={props.rec}
+                      data={props.rec}
+                      id={`addresses[${index}].city`}
                       label="市区町村"
-                      field={`addresses[${index}].city`}
-                      onChangeField={props.onChangeField}
+                      onChange={props.onChangeField}
                     />
                   </Grid>
                   <Grid item xs={6} sx={{ pl: 0.5 }}>
                     <FieldEditBox
-                      rec={props.rec}
+                      data={props.rec}
+                      id={`addresses[${index}].street`}
                       label="地名番地"
-                      field={`addresses[${index}].street`}
-                      onChangeField={props.onChangeField}
+                      onChange={props.onChangeField}
                     />
                   </Grid>
 
@@ -1229,10 +605,10 @@ const EditBlockAddresses = (props: EditBlockProp) => {
                   </Grid>
                   <Grid item xs={7} sx={{ pl: 0.5 }}>
                     <FieldEditBox
-                      rec={props.rec}
+                      data={props.rec}
+                      id={`addresses[${index}].building`}
                       label="ビル名"
-                      field={`addresses[${index}].building`}
-                      onChangeField={props.onChangeField}
+                      onChange={props.onChangeField}
                     />
                   </Grid>
 
@@ -1248,10 +624,10 @@ const EditBlockAddresses = (props: EditBlockProp) => {
 
                   <Grid item xs={7} sx={{ pl: 0.5 }}>
                     <FieldEditBox
-                      rec={props.rec}
+                      data={props.rec}
+                      id={`addresses[${index}].station`}
                       label="最寄り駅"
-                      field={`addresses[${index}].station`}
-                      onChangeField={props.onChangeField}
+                      onChange={props.onChangeField}
                     />
                   </Grid>
                   <Grid item xs={6}></Grid>
@@ -1347,7 +723,7 @@ const EditBlockTelephones = (props: EditBlockProp) => {
               <Paper
                 component="form"
                 sx={{
-                  backgroundColor: "#f0f0f0",
+                  backgroundColor: bgcolEditBlock,
                   pb: 1
                 }}
               >
@@ -1355,30 +731,31 @@ const EditBlockTelephones = (props: EditBlockProp) => {
                   {/* ------ 分類／電話番号 ------ */}
                   <Grid item xs={5} sx={{ pl: 2 }}>
                     <FieldComboBox
-                      rec={props.rec}
+                      data={props.rec}
+                      id={`telephones[${index}].kindof`}
                       label="分類"
                       editable={true}
                       options={[
-                        { data: "tel", label: "自宅TEL" },
-                        { data: "fax", label: "自宅FAX" },
-                        { data: "cell", label: "個人携帯" },
-                        { data: "offtel", label: "会社TEL" },
-                        { data: "offfax", label: "会社FAX" },
-                        { data: "offcell", label: "会社携帯" }
+                        { value: "tel", label: "自宅TEL" },
+                        { value: "fax", label: "自宅FAX" },
+                        { value: "cell", label: "個人携帯" },
+                        { value: "offtel", label: "会社TEL" },
+                        { value: "offfax", label: "会社FAX" },
+                        { value: "offcell", label: "会社携帯" }
                       ]}
-                      field={`telephones[${index}].kindof`}
                       fieldOnEdit={`telephones[${index}].label`}
-                      onChangeField={props.onChangeField}
+                      onChange={props.onChangeField}
                     />
                   </Grid>
                   <Grid item xs={1}></Grid>
 
                   <Grid item xs={6}>
                     <FieldEditBox
-                      rec={props.rec}
+                      type="tel"
+                      data={props.rec}
+                      id={`telephones[${index}].number`}
                       label="電話番号"
-                      field={`telephones[${index}].number`}
-                      onChangeField={props.onChangeField}
+                      onChange={props.onChangeField}
                     />
                   </Grid>
                 </Grid>
@@ -1470,7 +847,7 @@ const EditBlockEMails = (props: EditBlockProp) => {
               <Paper
                 component="form"
                 sx={{
-                  backgroundColor: "#f0f0f0",
+                  backgroundColor: bgcolEditBlock,
                   pb: 1
                 }}
               >
@@ -1478,27 +855,28 @@ const EditBlockEMails = (props: EditBlockProp) => {
                   {/* ------ 分類／メールアドレス ------ */}
                   <Grid item xs={5} sx={{ pl: 2 }}>
                     <FieldComboBox
-                      rec={props.rec}
+                      data={props.rec}
+                      id={`emails[${index}].kindof`}
                       label="分類"
                       editable={true}
                       options={[
-                        { data: "home", label: "Eメール[自宅]" },
-                        { data: "cell", label: "Eメール[携帯]" },
-                        { data: "office", label: "Eメール[会社]" }
+                        { value: "home", label: "Eメール[自宅]" },
+                        { value: "cell", label: "Eメール[携帯]" },
+                        { value: "office", label: "Eメール[会社]" }
                       ]}
-                      field={`emails[${index}].kindof`}
                       fieldOnEdit={`emails[${index}].label`}
-                      onChangeField={props.onChangeField}
+                      onChange={props.onChangeField}
                     />
                   </Grid>
                   <Grid item xs={1}></Grid>
 
                   <Grid item xs={6}>
                     <FieldEditBox
-                      rec={props.rec}
+                      type="email"
+                      data={props.rec}
+                      id={`emails[${index}].number`}
                       label="メールアドレス"
-                      field={`emails[${index}].number`}
-                      onChangeField={props.onChangeField}
+                      onChange={props.onChangeField}
                     />
                   </Grid>
                 </Grid>
@@ -1590,7 +968,7 @@ const EditBlockWebUrls = (props: EditBlockProp) => {
               <Paper
                 component="form"
                 sx={{
-                  backgroundColor: "#f0f0f0",
+                  backgroundColor: bgcolEditBlock,
                   pb: 1
                 }}
               >
@@ -1598,28 +976,29 @@ const EditBlockWebUrls = (props: EditBlockProp) => {
                   {/* ------ 分類／メールアドレス ------ */}
                   <Grid item xs={5} sx={{ pl: 2 }}>
                     <FieldComboBox
-                      rec={props.rec}
+                      data={props.rec}
+                      id={`weburls[${index}].kindof`}
                       label="分類"
                       editable={true}
                       options={[
-                        { data: "profile", label: "プロフィール" },
-                        { data: "blog", label: "ブログ" },
-                        { data: "hp", label: "ホームページ" },
-                        { data: "office", label: "会社" }
+                        { value: "profile", label: "プロフィール" },
+                        { value: "blog", label: "ブログ" },
+                        { value: "hp", label: "ホームページ" },
+                        { value: "office", label: "会社" }
                       ]}
-                      field={`weburls[${index}].kindof`}
                       fieldOnEdit={`weburls[${index}].label`}
-                      onChangeField={props.onChangeField}
+                      onChange={props.onChangeField}
                     />
                   </Grid>
                   <Grid item xs={1}></Grid>
 
                   <Grid item xs={6}>
                     <FieldEditBox
-                      rec={props.rec}
+                      type="url"
+                      data={props.rec}
+                      id={`weburls[${index}].number`}
                       label="URL"
-                      field={`weburls[${index}].number`}
-                      onChangeField={props.onChangeField}
+                      onChange={props.onChangeField}
                     />
                   </Grid>
                 </Grid>
@@ -1666,7 +1045,7 @@ const EditBlockOneJointName = (props: OneRenmeiProps) => {
       <Paper
         component="form"
         sx={{
-          backgroundColor: "#f0f0f0"
+          backgroundColor: bgcolEditBlock
         }}
       >
         <Grid container={true} columns={16}>
@@ -1676,52 +1055,29 @@ const EditBlockOneJointName = (props: OneRenmeiProps) => {
           </Grid>
           <Grid item={true} xs={4} sx={{ px: 1 }}>
             <FieldEditBox
-              rec={props.rec}
+              data={props.rec}
+              id={`joint_names[${props.index}].lastname`}
               label="姓"
-              field={`joint_names[${props.index}].lastname`}
-              onChangeField={props.onChangeField}
+              onChange={props.onChangeField}
             />
           </Grid>
           <Grid item={true} xs={4} sx={{ px: 1 }}>
             <FieldEditBox
-              rec={props.rec}
+              data={props.rec}
+              id={`joint_names[${props.index}].firstname`}
               label="名"
-              field={`joint_names[${props.index}].firstname`}
-              onChangeField={props.onChangeField}
+              onChange={props.onChangeField}
             />
           </Grid>
           <Grid item={true} xs={4} sx={{ px: 1 }}>
             <FieldComboBox
-              rec={props.rec}
+              data={props.rec}
+              id={`joint_names[${props.index}].suffix`}
               label="敬称"
-              field={`joint_names[${props.index}].suffix`}
               editable={true}
-              options={[
-                { data: "様" },
-                { data: "殿" },
-                { data: "御中" },
-                { data: "行" },
-                { data: "宛" },
-                { data: "先生" },
-                { data: "君" },
-                { data: "くん" },
-                { data: "さん" },
-                { data: "ちゃん" }
-              ]}
-              onChangeField={props.onChangeField}
+              options={suffixOptins}
+              onChange={props.onChangeField}
             />
-          </Grid>
-          <Grid item={true} xs={1} sx={{ px: 1, mt: 0 }}>
-            <SquareIconButton
-              id=""
-              variant="contained"
-              bgcolor="gray"
-              onClick={(id) => {
-                setDetail(!detail);
-              }}
-            >
-              {!detail ? <KeyboardArrowDownIcon /> : <KeyboardArrowUpIcon />}
-            </SquareIconButton>
           </Grid>
 
           {/* ------ フリガナの行 ------ */}
@@ -1730,21 +1086,36 @@ const EditBlockOneJointName = (props: OneRenmeiProps) => {
           </Grid>
           <Grid item={true} xs={4} sx={{ px: 1 }}>
             <FieldEditBox
-              rec={props.rec}
+              data={props.rec}
+              id={`joint_names[${props.index}].lastkana`}
               label="姓フリガナ"
-              field={`joint_names[${props.index}].lastkana`}
-              onChangeField={props.onChangeField}
+              onChange={props.onChangeField}
             />
           </Grid>
           <Grid item={true} xs={4} sx={{ px: 1 }}>
             <FieldEditBox
-              rec={props.rec}
+              data={props.rec}
+              id={`joint_names[${props.index}].firstkana`}
               label="名フリガナ"
-              field={`joint_names[${props.index}].firstkana`}
-              onChangeField={props.onChangeField}
+              onChange={props.onChangeField}
             />
           </Grid>
-          <Grid item={true} xs={5} sx={{ px: 1 }}></Grid>
+          <Grid item={true} xs={3} sx={{ px: 1 }}></Grid>
+          <Grid item={true} xs={2} sx={{ px: 0, mt: 0 }}>
+            <div style={{ flexGrow: 1 }}></div>
+            <SquareIconButton
+              id=""
+              variant="contained"
+              sx={{ backgoundColor: "gray" }}
+              onClick={(id) => {
+                setDetail(!detail);
+              }}
+            >
+              <Tooltip title={detail ? "詳細を閉じる" : "詳細を開く"}>
+                {!detail ? <MoreHorizIcon /> : <KeyboardArrowUpIcon />}
+              </Tooltip>
+            </SquareIconButton>
+          </Grid>
 
           <Grid item={true} xs={16} sx={{ px: 1 }}>
             <Divider />
@@ -1759,10 +1130,10 @@ const EditBlockOneJointName = (props: OneRenmeiProps) => {
               </Grid>
               <Grid item={true} xs={5} sx={{ px: 1 }}>
                 <FieldDatePicker
-                  rec={props.rec}
+                  data={props.rec}
+                  id={`joint_names[${props.index}].birthdate`}
                   label="誕生日"
-                  field={`joint_names[${props.index}].birthdate`}
-                  onChangeField={props.onChangeField}
+                  onChange={props.onChangeField}
                 />
               </Grid>
               <Grid item={true} xs={3} sx={{ pl: 2 }}>
@@ -1770,16 +1141,16 @@ const EditBlockOneJointName = (props: OneRenmeiProps) => {
               </Grid>
               <Grid item={true} xs={4} sx={{ px: 1 }}>
                 <FieldComboBox
-                  rec={props.rec}
+                  data={props.rec}
+                  id={`joint_names[${props.index}].gender`}
                   label="性別"
-                  field={`joint_names[${props.index}].gender`}
                   editable={false}
                   options={[
-                    { data: "男性" },
-                    { data: "女性" },
-                    { data: "その他" }
+                    { value: "男性" },
+                    { value: "女性" },
+                    { value: "その他" }
                   ]}
-                  onChangeField={props.onChangeField}
+                  onChange={props.onChangeField}
                 />
               </Grid>
 
@@ -1807,7 +1178,9 @@ const EditBlockJointNames = (props: EditBlockProp) => {
     firstname: "",
     lastkana: "",
     firstkana: "",
-    birthdate: null
+    suffix: "",
+    gender: "",
+    birthdate: ""
   };
 
   if (props.rec.joint_names) {
@@ -1890,30 +1263,144 @@ const EditBlockJointNames = (props: EditBlockProp) => {
 };
 // ----------------------------------------------------------------
 
-const ABEditRecord = (props: { rec: ABRecEditStateType }) => {
+type ABRecEditStateType = {
+  abid: string;
+  recid: string;
+  name: string;
+  command?: "editing" | "save" | "save_and_new" | "delete";
+  status?: "loading" | "fetching" | "progress" | "success" | "error";
+  statusText?: string;
+  data?: RecordType;
+};
+
+const ABEditRecordInner = (props: {
+  rec: ABRecEditStateType;
+  onEndEdit: () => void;
+}) => {
   const user = useContext(UserContext);
 
-  const [state, setState] = React.useState<ABRecEditStateType>({
+  const [info, setInfo] = React.useState<ABRecEditStateType>({
     abid: props.rec.abid,
     recid: props.rec.recid,
     name: props.rec.name,
+    command: props.rec.command,
     status: "loading",
     statusText: "",
     data: props.rec.data
   });
+  const [progress, setProgress] = React.useState(false);
 
-  if (state.status === "loading") {
+  if (props.rec.abid !== info.abid || props.rec.recid !== info.recid) {
+    //console.log(`id-changed:${info.abid} to ${props.rec.recid}`);
+    setInfo({
+      abid: props.rec.abid,
+      recid: props.rec.recid,
+      name: props.rec.name,
+      command: props.rec.command,
+      status: "loading",
+      statusText: "",
+      data: props.rec.data
+    });
+  }
+  const [msgbox, setMsgbox] = React.useState<MessageBoxProps>({
+    open: false,
+    caption: "",
+    message: ""
+  });
+
+  const cancelMsgBox = () => {
+    setMsgbox({ ...msgbox, open: false });
+  };
+
+  if (props.rec.command && props.rec.command !== info.command) {
+    //console.log(
+    //  `id:${info.abid}:::info.command=${info.command}, props.rec.command=${props.rec.command}`
+    //);
+    setInfo({ ...info, command: props.rec.command, status: "progress" });
+  }
+
+  if (info.command && info.status === "progress") {
+    if (info.command === "save" || info.command === "save_and_new") {
+      if (progress === false) {
+        setProgress(true);
+
+        console.log(
+          `id:${info.abid}:rec:${info.recid}::command:${info.command}`
+        );
+
+        let postdata = { ...info.data };
+        let method: "GET" | "POST" | "PUT" = "PUT";
+        let url = user.getEpt();
+        if (isHomeAddress(info.abid)) {
+          url += "/homeaddresses";
+        } else {
+          url += `/addresses`;
+        }
+
+        if (info.recid === "new") {
+          method = "POST";
+          delete postdata["id"];
+
+          postdata["group_id"] = info.abid;
+          console.log(`saving->${JSON.stringify(postdata)}`);
+        } else {
+          url += `/${info.recid}`;
+        }
+
+        let params = {};
+        if (info.data && "etag" in info.data) {
+          params["If-Match"] = info.data["etag"];
+        }
+        user.FetchWithRefreshedRetry(
+          url,
+          method,
+          (json) => {
+            setInfo({ ...info, status: "success" });
+            setProgress(false);
+            //console.log(`save->${JSON.stringify(json)}`);
+            if ("data" in json === false) {
+              let error: string =
+                json["error"] || json["statusText"] || "load error";
+              let mbinfo: MessageBoxProps = {
+                open: true,
+                caption: "保存に失敗しました",
+                message: error,
+                icon: "error",
+                options: [
+                  {
+                    text: "OK",
+                    handler: cancelMsgBox
+                  }
+                ],
+                onCancel: cancelMsgBox
+              };
+              setMsgbox(mbinfo);
+            } else {
+              props.onEndEdit();
+            }
+          },
+          {
+            params: params,
+            postdata: postdata
+          }
+        );
+      }
+    }
+  }
+
+  if (info.status === "loading") {
     if (props.rec.recid === "new") {
-      setState({ ...state, status: "success" });
-    } else if (state.data && state.data.code) {
-      setState({ ...state, status: "success" });
+      setInfo({ ...info, status: "success" });
+    } else if (info.data && info.data.code) {
+      setInfo({ ...info, status: "success" });
     } else {
+      setInfo({ ...info, status: "fetching" });
       loadRecord(user, props.rec.abid, props.rec.recid, (json) => {
         if ("data" in json) {
-          setState({ ...state, status: "success", data: json["data"] });
+          setInfo({ ...info, status: "success", data: json["data"] });
         } else {
           let error = json["error"] || json["statusText"] || "load error";
-          setState({ ...state, status: "error", statusText: error });
+          setInfo({ ...info, status: "error", statusText: error });
         }
       });
     }
@@ -1921,50 +1408,46 @@ const ABEditRecord = (props: { rec: ABRecEditStateType }) => {
 
   const editCallback = (field: string, value: string) => {
     let newval: RecordType = {
-      ...state.data,
-      id: state.data ? state.data.id : ""
+      ...info.data,
+      id: info.data ? info.data.id : ""
     };
     const rp = ReformField(newval, field);
-    rp.rec[rp.field] = value;
-    setState({ ...state, data: newval });
+    rp.data[rp.field] = value;
+    setInfo({ ...info, data: newval });
     //console.log(`${field}=${value}`);
   };
   const adddelCallback = (rec: {}) => {
     let newval: RecordType = {
       ...rec,
-      id: state.data ? state.data.id : ""
+      id: info.data ? info.data.id : ""
     };
 
-    setState({ ...state, data: newval });
+    setInfo({ ...info, data: newval });
   };
 
   let cont = <></>;
-  if (state.status === "loading") {
+  if (info.status === "loading" || info.status === "fetching") {
     cont = (
       <Box sx={{ width: "calc( 80vw )", mt: 10, textAlign: "center" }}>
         <div className="textcenter">loading...</div>
         <CircularProgress />
       </Box>
     );
-  } else if (state.status === "success") {
-    const rec: RecordType = state.data ? state.data : { id: "" };
+  } else if (info.status === "success" || info.status === "progress") {
+    const rec: RecordType = info.data ? info.data : { id: "" };
 
     //createData("name", name), createData("dessert", "Cupcake")];
     cont = (
       <div className="editConts">
         <EditBlockName
-          abid={state.abid}
+          abid={info.abid}
           rec={rec}
           onChangeField={editCallback}
         />
-        <EditBlockOrg
-          abid={state.abid}
-          rec={rec}
-          onChangeField={editCallback}
-        />
+        <EditBlockOrg abid={info.abid} rec={rec} onChangeField={editCallback} />
         <Divider sx={{ mt: 1 }} />
         <EditBlockAddresses
-          abid={state.abid}
+          abid={info.abid}
           rec={rec}
           onChangeField={editCallback}
           onChangeData={adddelCallback}
@@ -1972,7 +1455,7 @@ const ABEditRecord = (props: { rec: ABRecEditStateType }) => {
 
         <Divider sx={{ mt: 1 }} />
         <EditBlockTelephones
-          abid={state.abid}
+          abid={info.abid}
           rec={rec}
           onChangeField={editCallback}
           onChangeData={adddelCallback}
@@ -1980,14 +1463,14 @@ const ABEditRecord = (props: { rec: ABRecEditStateType }) => {
 
         <Divider sx={{ mt: 1 }} />
         <EditBlockEMails
-          abid={state.abid}
+          abid={info.abid}
           rec={rec}
           onChangeField={editCallback}
           onChangeData={adddelCallback}
         />
         <Divider sx={{ mt: 1 }} />
         <EditBlockWebUrls
-          abid={state.abid}
+          abid={info.abid}
           rec={rec}
           onChangeField={editCallback}
           onChangeData={adddelCallback}
@@ -1995,23 +1478,106 @@ const ABEditRecord = (props: { rec: ABRecEditStateType }) => {
 
         <Divider sx={{ mt: 1 }} />
         <EditBlockJointNames
-          abid={state.abid}
+          abid={info.abid}
           rec={rec}
           onChangeField={editCallback}
           onChangeData={adddelCallback}
         />
+        <PopupProgress open={progress} type="circle" />
+        <MessageBox {...msgbox} />
       </div>
     );
-  } else if (state.status === "error") {
+  } else if (info.status === "error") {
     cont = (
       <div style={{ width: "calc( 80vw )" }}>
         <h3>failed</h3>
-        <p>{state.statusText}</p>
+        <p>{info.statusText}</p>
       </div>
     );
   }
   return <>{cont}</>;
 };
 
-export default ABRecDialog;
-export { ABRecDialogPropsType, ABRecEditStateType, ABEditRecord };
+export type ABEditRecordProps = {
+  rec: ABRecEditStateType;
+  onEndEdit: () => void;
+};
+
+const ABEditRecord = (props: {
+  rec: ABRecEditStateType;
+  onEndEdit: () => void;
+}) => {
+  const [rec, setRec] = React.useState({ ...props.rec });
+
+  const fireCommand = (command: "save" | "save_and_new" | "delete") => {
+    if (command === "delete") {
+      if (rec.recid !== "new") {
+      }
+    } else {
+      setRec({ ...rec, command: command });
+    }
+  };
+
+  type buttonsProps = {
+    caption?: string;
+    icon?: typeof SvgIcon;
+    variant: "contained" | "outlined" | "text";
+    onClick: (param?: any) => void;
+    onClickParam?: string;
+  };
+  let buttons: buttonsProps[] = [
+    {
+      caption: "戻る",
+      variant: "outlined",
+      onClick: props.onEndEdit
+    },
+    {
+      caption: "保存",
+      variant: "contained",
+      onClick: fireCommand,
+      onClickParam: "save"
+    },
+    {
+      caption: "保存して新規作成",
+      variant: "contained",
+      onClick: fireCommand,
+      onClickParam: "save_and_new"
+    },
+    {
+      caption: "",
+      icon: DeleteForeverIcon,
+      variant: "outlined",
+      onClick: fireCommand,
+      onClickParam: "delete"
+    }
+  ];
+
+  return (
+    <>
+      <Box sx={{ width: "100%", align: "left" }}>
+        {buttons.map((button) => {
+          return (
+            <Button
+              sx={{ mr: 1 }}
+              variant={button.variant}
+              onClick={() => {
+                button.onClick(button.onClickParam);
+              }}
+            >
+              {button.icon && <button.icon />}
+              {button.caption && button.caption}
+            </Button>
+          );
+        })}
+      </Box>
+
+      <Box>
+        <h3>レコードの編集</h3>
+      </Box>
+
+      <ABEditRecordInner rec={rec} onEndEdit={props.onEndEdit} />
+    </>
+  );
+};
+
+export { ABRecEditStateType, ABEditRecord };

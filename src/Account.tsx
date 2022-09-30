@@ -93,9 +93,12 @@ export type UserContextType = {
   FetchWithRefreshedRetry: (
     url: string,
     method: "GET" | "POST" | "PUT" | "DELETE",
-    params: {},
-    postdata: {},
-    callbackfunc: (data: {}) => void
+    callbackfunc: (data: {}) => void,
+    options?: {
+      headers?: {};
+      params?: {};
+      postdata?: {};
+    }
   ) => void;
 };
 
@@ -178,9 +181,12 @@ export const UserContext = createContext<UserContextType>({
   FetchWithRefreshedRetry: (
     url: string,
     method: "GET" | "POST" | "PUT" | "DELETE",
-    params: {},
-    postdata: {},
-    callbackfunc: (data: {}) => void
+    callbackfunc: (data: {}) => void,
+    options?: {
+      headers?: {};
+      params?: {};
+      postdata?: {};
+    }
   ) => {}
 });
 
@@ -309,43 +315,49 @@ export const UserContextProvider: React.FC<{ children: React.ReactNode }> = ({
               ept: eps,
               uag: uag
             };
-            httpFetch(`ept/homeaddresses/list`, "GET", params, {}, (json) => {
-              let userName = email;
-              if (json && "data" in json) {
-                userName = json["data"][0]["lastname"];
-                if (userName) userName += " ";
-                userName += json["data"][0]["firstname"];
-                if (!userName) {
-                  try {
-                    userName = json["data"][0]["emails"][0]["address"];
-                  } catch (e) {
-                    userName = email;
+            httpFetch(
+              `${ept}/homeaddresses/list`,
+              "GET",
+              params,
+              {},
+              (json) => {
+                let userName = email;
+                if (json && "data" in json) {
+                  userName = json["data"][0]["lastname"];
+                  if (userName) userName += " ";
+                  userName += json["data"][0]["firstname"];
+                  if (!userName) {
+                    try {
+                      userName = json["data"][0]["emails"][0]["address"];
+                    } catch (e) {
+                      userName = email;
+                    }
                   }
                 }
-              }
 
-              // 本来はサーバーと認証のやりとりがあって、その結果としてユーザー情報がセットされる
-              let userdata = {
-                ...user,
-                userName: userName,
-                userId: 1,
-                email: email,
-                isLoggedIn: true,
-                a_token: data.access_token,
-                id_token: data.id_token,
-                r_token: data.refresh_token,
-                uag: uag,
-                ept: ept,
-                eps: eps,
-                epm: epm,
-                cid: cid,
-                cse: cse,
-                csr: csr
-              };
-              setValues(userdata);
-              localStorage.setItem("user", JSON.stringify(userdata));
-              cbf({ login: true, errtxt: "" });
-            });
+                // 本来はサーバーと認証のやりとりがあって、その結果としてユーザー情報がセットされる
+                let userdata = {
+                  ...user,
+                  userName: userName,
+                  userId: 1,
+                  email: email,
+                  isLoggedIn: true,
+                  a_token: data.access_token,
+                  id_token: data.id_token,
+                  r_token: data.refresh_token,
+                  uag: uag,
+                  ept: ept,
+                  eps: eps,
+                  epm: epm,
+                  cid: cid,
+                  cse: cse,
+                  csr: csr
+                };
+                setValues(userdata);
+                localStorage.setItem("user", JSON.stringify(userdata));
+                cbf({ login: true, errtxt: "" });
+              }
+            );
           } else {
             let userdata = {
               ...user,
@@ -438,34 +450,72 @@ export const UserContextProvider: React.FC<{ children: React.ReactNode }> = ({
       }
     );
   };
+
   const FetchWithRefreshedRetry = (
     url: string,
     method: "GET" | "POST" | "PUT" | "DELETE",
-    params: {},
-    postdata: {},
-    callbackfunc: (data: {}) => void
+    callbackfunc: (data: {}) => void,
+    options: {
+      headers?: {};
+      params?: {};
+      postdata?: {};
+    } = {}
   ) => {
-    httpFetch(url, method, params, postdata, (json: {}) => {
-      if ("data" in json === false) {
-        if (parseInt(json["statusCode"], 10) === 401) {
-          RefreshToken((res) => {
-            if (res && "a_token" in res) {
-              params["atk"] = res.a_token;
-              httpFetch(url, method, params, postdata, (json: {}) => {
-                callbackfunc(json);
-              });
-            } else {
-              Logoff();
-              callbackfunc({ statusCode: 500, error: "something is wrong" });
-            }
-          });
+    let params = { ...options.params };
+
+    if ("uag" in params === false) {
+      params["uag"] = getUag();
+    }
+
+    let headers = { ...options.headers };
+
+    if ("X-atk" in headers === false) {
+      headers["X-atk"] = getAToken();
+    }
+
+    if ("ept" in params) {
+      headers["X-ept"] = params["ept"];
+      delete params["ept"];
+    } else if ("X-ept" in headers === false) {
+      headers["X-ept"] =
+        url.search(/\/token|\/authorize/) !== -1 ? getEps() : getEpm();
+    }
+
+    httpFetch(
+      url,
+      method,
+      params,
+      options.postdata || {},
+      (json: {}) => {
+        if ("data" in json === false) {
+          if (parseInt(json["statusCode"], 10) === 401) {
+            RefreshToken((res) => {
+              if (res && "a_token" in res) {
+                params["atk"] = res.a_token;
+                httpFetch(
+                  url,
+                  method,
+                  params,
+                  options.postdata || {},
+                  (json: {}) => {
+                    callbackfunc(json);
+                  },
+                  headers
+                );
+              } else {
+                Logoff();
+                callbackfunc({ statusCode: 500, error: "something is wrong" });
+              }
+            });
+          } else {
+            callbackfunc(json);
+          }
         } else {
           callbackfunc(json);
         }
-      } else {
-        callbackfunc(json);
-      }
-    });
+      },
+      headers
+    );
   };
 
   return (

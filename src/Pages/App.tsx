@@ -1,12 +1,9 @@
 import * as React from "react";
 //import { Footer } from "../components/Framing";
-import { CABContents, CABCtrlBar, CABEditCtrlBar } from "../Views/CloudAB";
+import { CABContents } from "../Views/CloudAB";
 import { CABSidebar, SBParamsType } from "../Views/Sidebar";
-import {
-  RecordType,
-  ABRecEditStateType,
-  ABEditRecord
-} from "../Views/ABRecord";
+import { RecordType } from "../CABDataTypes";
+import { ABRecEditStateType, ABEditRecord } from "../Views/EditRecord";
 import "../App.css";
 import { ContentsPropsType } from "../AppSettings";
 import CABBaseLayout from "../Views/CABBaseLayout";
@@ -39,6 +36,9 @@ export const App: React.FC = () => {
   const [abbar, setAbbar] = React.useState<ContentsPropsType>({ ...emptyData });
 
   const fromHamberger = (info: ContentsPropsType) => {
+    console.log(`fromHamberger(info.name=${info.name})`);
+    abId = info.id;
+    recId = "";
     setAbbar({ ...info });
   };
 
@@ -52,6 +52,8 @@ export const App: React.FC = () => {
   };
 
   const onEndEditRecord = () => {
+    //todo
+
     setMode("list");
   };
 
@@ -72,28 +74,14 @@ export const App: React.FC = () => {
     return <></>;
   };
 
-  const getContents = () => {
-    if (mode === "list") {
-      return (
-        <>
-          <CABCtrlBar abook={{ ...abbar }}>
-            <CABContents abook={{ ...abbar }} onEditRecord={onEditRecord} />
-          </CABCtrlBar>
-        </>
-      );
-    } else if (mode === "edit") {
-      return (
-        <CABEditCtrlBar rec={editingRec} onEndEdit={onEndEditRecord}>
-          <ABEditRecord rec={editingRec} />
-        </CABEditCtrlBar>
-      );
-    }
-    return <></>;
-  };
-
   return (
     <CABBaseLayout getSidebar={getSidebar} loginable={true}>
-      {getContents()}
+      {mode === "list" && (
+        <CABContents abook={{ ...abbar }} onEditRecord={onEditRecord} />
+      )}
+      {mode === "edit" && (
+        <ABEditRecord rec={editingRec} onEndEdit={onEndEditRecord} />
+      )}
     </CABBaseLayout>
   );
 };

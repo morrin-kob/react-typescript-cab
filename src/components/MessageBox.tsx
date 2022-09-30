@@ -122,7 +122,11 @@ const MessageBox = (props: MessageBoxProps) => {
             <iconInfo.icon sx={{ color: iconInfo.color }} />
           </Grid>
           <Grid item sx={{ flexGrow: 1 }}>
-            <DialogContentText>{props.message}</DialogContentText>
+            <DialogContentText>
+              {props.message.split(/\n|<br>|<br \/>/i).map((str) => {
+                return <div>{str}</div>;
+              })}
+            </DialogContentText>
           </Grid>
         </Grid>
       </DialogContent>
