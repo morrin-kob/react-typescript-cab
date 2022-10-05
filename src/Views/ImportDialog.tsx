@@ -7,6 +7,7 @@ import ParseCXML from "../ParseCXML";
 import ParseVCard from "../ParseVCard";
 import ParseJADR from "../ParseJADR";
 import ParseCSV from "../ParseCSV";
+import ParseExcel from "../ParseExcel";
 
 import MessageBox, { MessageBoxProps } from "../components/MessageBox";
 
@@ -17,6 +18,8 @@ import {
   FieldTextArea,
   FieldComboBox,
   FieldDatePicker,
+  CBOptionType,
+  FieldRadioButtonsGroup,
   ReformField
 } from "../components/EditParts";
 
@@ -268,47 +271,6 @@ const refField = (rec: RecordType, field: string) => {
   return rec[field];
 };
 
-const handleParseABFiles = (
-  user: UserContextType,
-  file: Blob,
-  filename: string,
-  parsed: (json: {}) => void
-) => {
-  let fext = filename.split(".").pop()?.toLowerCase();
-  const reader = new FileReader();
-  reader.onload = (e: any) => {
-    const codes = new Uint8Array(e.target.result);
-    const encoding = Encoding.detect(codes);
-    const unicodeString = Encoding.convert(codes, {
-      to: "unicode",
-      from: encoding,
-      type: "string"
-    });
-    if (fext === "csv") {
-      ParseCSV(user, unicodeString, parsed);
-      // parse(unicodeString, {
-      //   header: true,
-      //   dynamicTyping: true,
-      //   skipEmptyLines: true,
-      //   complete: (results: {}) => {
-      //     //console.log(`${JSON.stringify(results)}`);
-      //     parsed(results);
-      //   }
-      // });
-      // } else if (fext === "json") {
-      //   let json = JSON.parse(unicodeString);
-      //   parsed(json);
-    } else if (fext === "xml") {
-      ParseCXML(unicodeString, parsed);
-    } else if (fext === "vcf") {
-      ParseVCard(unicodeString, parsed);
-    } else if (fext === "jad") {
-      ParseJADR(unicodeString, parsed);
-    }
-  };
-  reader.readAsArrayBuffer(file);
-};
-
 type AttachFieldsType = {
   mfield: string;
   attach: string;
@@ -350,16 +312,29 @@ const AttachFields = (props: AttachFieldsType) => {
     message = `現在どの項目も割り付けられていません`;
     message += "\n行をクリックすることで割付を設定できます";
   }
+  let explain = "";
+  if (
+    mfields[props.mfield].search(/フリガナ/) !== -1 ||
+    mfields[props.mfield].search(/^姓|：姓|^名|：名/) !== -1
+  ) {
+    if (mfields[props.mfield].search(/会社/) === -1) {
+      explain = `読み込むデータが姓と名に分かれてない場合は「姓」に割り当てます`;
+    }
+  } else if (mfields[props.mfield].search(/都道府県|市郡区|町村地番/) !== -1) {
+    explain = `読み込むデータが都道府県／市郡区などに分かれてない場合は「町村地番」に割り当てます`;
+  }
 
   let rec = props.records[sheet.recno];
   return (
     <>
-      <Dialog open={open} onClose={handleCancel} sx={{ fontSize: "12pt" }}>
+      <Dialog
+        open={open}
+        onClose={handleCancel}
+        maxWidth="xl"
+        sx={{ fontSize: "12pt" }}
+      >
         <Grid container sx={{ p: 0, mb: 0 }}>
           <Grid item sx={{ flexGrow: 1 }}>
-            {/* <Typography variant="h3" sx={{ px: 1 }}>
-              住所録項目: {mfields[props.mfield]}
-            </Typography> */}
             <h2 style={{ marginBottom: 0 }}>
               住所録項目: {mfields[props.mfield]}
             </h2>
@@ -384,15 +359,22 @@ const AttachFields = (props: AttachFieldsType) => {
         </Grid>
         <Divider />
 
-        <DialogContent sx={{ p: 1 }}>
+        <DialogContent sx={{ p: 1, width: cxDlg, minWidth: "20em" }}>
           <div style={{ fontSize: "90%", color: "var(--col-explain)" }}>
             {message.split(/\n|<br>|<br \/>/i).map((str) => {
               return <div>{str}</div>;
             })}
+            {explain && (
+              <Alert severity="info" sx={{ py: 0, px: 0.5, mt: 1 }}>
+                {explain.split(/\n|<br>|<br \/>/i).map((str) => {
+                  return <div>{str}</div>;
+                })}
+              </Alert>
+            )}
           </div>
         </DialogContent>
         <DialogContent
-          sx={{ p: 0, width: cxDlg, minWidth: "20em", maxWidth: 1200 }}
+          sx={{ p: 0, width: cxDlg, minWidth: "20em", maxWidth: 1000 }}
         >
           <TableContainer
             sx={{
@@ -561,7 +543,9 @@ const ImportDialog = (props: {
     filename: string;
     file: any;
     filetype: string;
-    status: string;
+    status: "" | "loading" | "loaded" | "choose-table";
+    tables?: { id: string; name: string }[];
+    tableId?: string;
     afields: {}; // attached
     fids: string[]; // field-id of inported file
     records: {}[];
@@ -570,6 +554,8 @@ const ImportDialog = (props: {
     filename: "",
     file: null,
     filetype: "vcf",
+    tables: undefined,
+    tableId: undefined,
     status: "",
     afields: {},
     fids: [],
@@ -597,6 +583,65 @@ const ImportDialog = (props: {
 
   // const fileOpenRef = React.useRef<HTMLDivElement>(null);
   const user = useContext(UserContext);
+
+  const handleParseABFiles = (
+    user: UserContextType,
+    file: Blob,
+    filename: string,
+    parsed: (json: {}) => void
+  ) => {
+    let fext = filename.split(".").pop()?.toLowerCase();
+
+    if (fext === "xlsx") {
+      ParseExcel(user, { fileObj: file as File }, parsed);
+    } else {
+      const reader = new FileReader();
+      reader.onload = (e: any) => {
+        const codes = new Uint8Array(e.target.result);
+        const encoding = Encoding.detect(codes);
+        const unicodeString = Encoding.convert(codes, {
+          to: "unicode",
+          from: encoding,
+          type: "string"
+        });
+        if (fext === "csv") {
+          ParseCSV(user, unicodeString, parsed);
+        } else if (fext === "xml") {
+          ParseCXML(unicodeString, parsed);
+        } else if (fext === "vcf") {
+          ParseVCard(unicodeString, parsed);
+        } else if (fext === "jad") {
+          ParseJADR(unicodeString, parsed);
+        }
+      };
+      reader.readAsArrayBuffer(file);
+    }
+  };
+  const handleParsed = (json: {}) => {
+    //console.log(`json:${JSON.stringify(json)}`);
+    if ("tables" in json) {
+      setData({
+        ...data,
+        status: "choose-table",
+        tables: json["tables"]
+      });
+    } else {
+      setData({
+        ...data,
+        status: "loaded",
+        afields: json["attach"] || {},
+        fids: json["fids"] || [],
+        records: json["data"] || [],
+        errorText: json["error"]
+      });
+
+      if ("data" in json) {
+        setSheet({ ...sheet, recno: 1, reccount: json["data"].length - 1 });
+      }
+    }
+  };
+
+  const loadTable = () => {};
 
   const handleClose = () => {
     setOpen(false);
@@ -633,21 +678,7 @@ const ImportDialog = (props: {
   if (data.file) {
     if (!data.status) {
       setData({ ...data, status: "loading" });
-      handleParseABFiles(user, data.file, data.filename, (json: {}) => {
-        //console.log(`json:${JSON.stringify(json)}`);
-        setData({
-          ...data,
-          status: "loaded",
-          afields: json["attach"] || {},
-          fids: json["fids"] || [],
-          records: json["data"] || [],
-          errorText: json["error"]
-        });
-
-        if ("data" in json) {
-          setSheet({ ...sheet, recno: 1, reccount: json["data"].length - 1 });
-        }
-      });
+      handleParseABFiles(user, data.file, data.filename, handleParsed);
     }
   }
 
@@ -692,6 +723,59 @@ const ImportDialog = (props: {
         <div className="textcenter">loading...</div>
         <CircularProgress />
       </Box>
+    );
+  } else if (data.status === "choose-table" && data.tables) {
+    let options: CBOptionType[] = [];
+    data.tables.map((table) => {
+      return options.push({ label: table.name, value: table.id });
+    });
+    dispdata = (
+      <>
+        <Typography variant="subtitle1">
+          インポートするデータを選択してください
+        </Typography>
+        <FieldRadioButtonsGroup
+          options={options}
+          default_val={options[0].value}
+          data={data}
+          id="tableId"
+          onChange={(id, value, e) => {
+            setData({ ...data, tableId: value as string });
+          }}
+        />
+      </>
+    );
+    buttons = (
+      <>
+        <Divider sx={{ mb: 1 }} />
+        <Grid container>
+          <Grid sx={{ flexGrow: 1 }}></Grid>
+          <Grid>
+            <Button
+              variant="contained"
+              color="primary"
+              sx={{ mr: 1 }}
+              onClick={() => {
+                ParseExcel(
+                  user,
+                  { fileObj: data.file, tableId: data.tableId },
+                  handleParsed
+                );
+              }}
+            >
+              選択決定
+            </Button>
+            <Button
+              variant="outlined"
+              color="primary"
+              sx={{ mr: 1 }}
+              onClick={handleClose}
+            >
+              閉じる
+            </Button>
+          </Grid>
+        </Grid>
+      </>
     );
   } else if (data.status === "loaded") {
     if (data["errorText"]) {
@@ -781,8 +865,6 @@ const ImportDialog = (props: {
 
       let rec = records[sheet.recno] as RecordType;
 
-      let fext = data.filename.split(".").pop()?.toLowerCase();
-
       // fixed format
       if (
         "afields" in data === false ||
@@ -856,9 +938,9 @@ const ImportDialog = (props: {
       // asigning
       else {
         const columns: { type: string; title: string; width: string }[] = [
-          { type: "field", title: "住所録項目", width: "14em" },
+          { type: "field", title: "住所録項目", width: "13em" },
           { type: "target", title: "割付項目", width: "7em" },
-          { type: "data", title: "データ", width: "calc( 100% - 19em )" }
+          { type: "data", title: "データ", width: "calc( 100% - 20em )" }
         ];
         const attach = data["afields"];
         dispdata = (
@@ -957,12 +1039,13 @@ const ImportDialog = (props: {
                           } else {
                             let bgcol =
                               column.type === "field" ? "#f0f0f4" : "";
+                            let fs = column.type === "field" ? "80%" : "90%";
                             return (
                               <TableCell
                                 sx={{
                                   maxWidth: column.width,
                                   py: 1,
-                                  fontSize: "90%",
+                                  fontSize: fs,
                                   backgroundColor: bgcol
                                 }}
                               >
@@ -1033,7 +1116,7 @@ const ImportDialog = (props: {
     filename = data.filename.split(/[/\\]/).pop() || "";
   }
   return (
-    <Dialog open={open} onClose={handleClose}>
+    <Dialog open={open} onClose={handleClose} maxWidth="xl">
       <DialogTitle>
         インポート - {props.abook.name}
         <IconButton
@@ -1050,7 +1133,9 @@ const ImportDialog = (props: {
         </IconButton>
       </DialogTitle>
 
-      <DialogContent sx={{ width: cxDlg, minWidth: "20em", maxWidth: 1200 }}>
+      <DialogContent
+        sx={{ width: cxDlg, minWidth: "20em", maxWidth: "1200px" }}
+      >
         <Box sx={{ mt: 1, color: "var(--col-explain)" }}>
           {message.split(/\n|<br>|<br \/>/i).map((str) => {
             return <p>{str}</p>;
@@ -1070,7 +1155,8 @@ const ImportDialog = (props: {
               { label: "vCard形式", value: "vcf" },
               { label: "Contact-XML 1.1形式", value: "xml" },
               { label: "JADDRESS形式", value: "jad" },
-              { label: "CSV形式", value: "csv" }
+              { label: "CSV形式", value: "csv" },
+              { label: "Excel形式", value: "xlsx" }
             ]}
           />
         </Box>

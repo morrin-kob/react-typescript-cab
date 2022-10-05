@@ -504,8 +504,8 @@ const ABRecDialog = (props: ABRecDialogPropsType) => {
   let cxDlg = isMobile ? "100%" : "70%";
 
   return (
-    <Dialog open={open} onClose={handleClose}>
-      <DialogTitle sx={{ width: { cxDlg }, maxWidth: 600 }}>
+    <Dialog open={open} onClose={handleClose} maxWidth="xl">
+      <DialogTitle sx={{ width: { cxDlg } }}>
         {name}
         <IconButton
           aria-label="close"

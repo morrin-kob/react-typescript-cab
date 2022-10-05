@@ -120,7 +120,7 @@ const EditBlockName = (props: EditBlockProp) => {
               <FieldEditBox
                 data={props.rec}
                 id="lastname"
-                label="姓"
+                placeholder="姓"
                 onChange={props.onChangeField}
               />
             </Grid>
@@ -128,7 +128,7 @@ const EditBlockName = (props: EditBlockProp) => {
               <FieldEditBox
                 data={props.rec}
                 id="firstname"
-                label="名"
+                placeholder="名"
                 onChange={props.onChangeField}
               />
             </Grid>
@@ -136,7 +136,7 @@ const EditBlockName = (props: EditBlockProp) => {
               <FieldComboBox
                 data={props.rec}
                 id="suffix"
-                label="敬称"
+                placeholder="敬称"
                 editable={true}
                 backAroundColor={bgcolEditAround}
                 options={suffixOptins}
@@ -171,7 +171,7 @@ const EditBlockName = (props: EditBlockProp) => {
               <FieldEditBox
                 data={props.rec}
                 id="password"
-                label="password"
+                placeholder="password"
                 type="password"
                 onChange={props.onChangeField}
               />
@@ -185,7 +185,7 @@ const EditBlockName = (props: EditBlockProp) => {
               <FieldEditBox
                 data={props.rec}
                 id="lastkana"
-                label="姓フリガナ"
+                placeholder="姓フリガナ"
                 onChange={props.onChangeField}
               />
             </Grid>
@@ -193,7 +193,7 @@ const EditBlockName = (props: EditBlockProp) => {
               <FieldEditBox
                 data={props.rec}
                 id="firstkana"
-                label="名フリガナ"
+                placeholder="名フリガナ"
                 onChange={props.onChangeField}
               />
             </Grid>
@@ -211,7 +211,7 @@ const EditBlockName = (props: EditBlockProp) => {
               <TagSetter
                 data={props.rec}
                 id="tags"
-                label="タグ"
+                placeholder="タグ"
                 options={Object.keys(taglist)}
                 onChange={(id, value, e) => {
                   if (value) {
@@ -252,7 +252,8 @@ const EditBlockName = (props: EditBlockProp) => {
                   <FieldDatePicker
                     data={props.rec}
                     id="birthdate"
-                    label="誕生日"
+                    placeholder="誕生日"
+                    backAroundColor={bgcolEditAround}
                     onChange={props.onChangeField}
                   />
                 </Grid>
@@ -263,7 +264,7 @@ const EditBlockName = (props: EditBlockProp) => {
                   <FieldComboBox
                     data={props.rec}
                     id="gender"
-                    label="性別"
+                    placeholder="性別"
                     editable={false}
                     options={[
                       { value: "男性" },
@@ -282,7 +283,7 @@ const EditBlockName = (props: EditBlockProp) => {
                   <FieldEditBox
                     data={props.rec}
                     id="code"
-                    label="顧客コード"
+                    placeholder="顧客コード"
                     onChange={props.onChangeField}
                   />
                 </Grid>
@@ -297,7 +298,7 @@ const EditBlockName = (props: EditBlockProp) => {
                   <FieldTextArea
                     data={props.rec}
                     id="memo"
-                    label="メモ"
+                    placeholder="メモ"
                     onChange={props.onChangeField}
                   />
                 </Grid>
@@ -384,7 +385,7 @@ const EditBlockOrg = (props: EditBlockProp) => {
                   <FieldEditBox
                     data={props.rec}
                     id="organization.name"
-                    label="勤務先"
+                    placeholder="勤務先"
                     onChange={props.onChangeField}
                   />
                 </Grid>
@@ -397,7 +398,7 @@ const EditBlockOrg = (props: EditBlockProp) => {
                   <FieldEditBox
                     data={props.rec}
                     id="organization.kana"
-                    label="フリガナ"
+                    placeholder="フリガナ"
                     onChange={props.onChangeField}
                   />
                 </Grid>
@@ -414,7 +415,7 @@ const EditBlockOrg = (props: EditBlockProp) => {
                   <FieldEditBox
                     data={props.rec}
                     id="organization.dept1"
-                    label="部署名1"
+                    placeholder="部署名1"
                     onChange={props.onChangeField}
                   />
                 </Grid>
@@ -422,7 +423,7 @@ const EditBlockOrg = (props: EditBlockProp) => {
                   <FieldEditBox
                     data={props.rec}
                     id="organization.dept2"
-                    label="部署名2"
+                    placeholder="部署名2"
                     onChange={props.onChangeField}
                   />
                 </Grid>
@@ -435,7 +436,7 @@ const EditBlockOrg = (props: EditBlockProp) => {
                   <FieldEditBox
                     data={props.rec}
                     id="organization.title"
-                    label="役職"
+                    placeholder="役職"
                     onChange={props.onChangeField}
                   />
                 </Grid>
@@ -519,7 +520,7 @@ const EditBlockAddresses = (props: EditBlockProp) => {
                   <Grid item xs={5} sx={{ pl: 2 }}>
                     <FieldComboBox
                       data={props.rec}
-                      label="分類"
+                      placeholder="分類"
                       id={`addresses[${index}].kindof`}
                       editable={true}
                       options={[
@@ -543,7 +544,7 @@ const EditBlockAddresses = (props: EditBlockProp) => {
                       data={props.rec}
                       id={`addresses[${index}].zipcode`}
                       type="tel"
-                      label="郵便番号"
+                      placeholder="郵便番号"
                       onChange={props.onChangeField}
                     />
                   </Grid>
@@ -577,7 +578,7 @@ const EditBlockAddresses = (props: EditBlockProp) => {
                     <FieldEditBox
                       data={props.rec}
                       id={`addresses[${index}].region`}
-                      label="都道府県"
+                      placeholder="都道府県"
                       onChange={props.onChangeField}
                     />
                   </Grid>
@@ -585,7 +586,7 @@ const EditBlockAddresses = (props: EditBlockProp) => {
                     <FieldEditBox
                       data={props.rec}
                       id={`addresses[${index}].city`}
-                      label="市区町村"
+                      placeholder="市区町村"
                       onChange={props.onChangeField}
                     />
                   </Grid>
@@ -593,7 +594,7 @@ const EditBlockAddresses = (props: EditBlockProp) => {
                     <FieldEditBox
                       data={props.rec}
                       id={`addresses[${index}].street`}
-                      label="地名番地"
+                      placeholder="地名番地"
                       onChange={props.onChangeField}
                     />
                   </Grid>
@@ -607,7 +608,7 @@ const EditBlockAddresses = (props: EditBlockProp) => {
                     <FieldEditBox
                       data={props.rec}
                       id={`addresses[${index}].building`}
-                      label="ビル名"
+                      placeholder="ビル名"
                       onChange={props.onChangeField}
                     />
                   </Grid>
@@ -626,7 +627,7 @@ const EditBlockAddresses = (props: EditBlockProp) => {
                     <FieldEditBox
                       data={props.rec}
                       id={`addresses[${index}].station`}
-                      label="最寄り駅"
+                      placeholder="最寄り駅"
                       onChange={props.onChangeField}
                     />
                   </Grid>
@@ -733,7 +734,7 @@ const EditBlockTelephones = (props: EditBlockProp) => {
                     <FieldComboBox
                       data={props.rec}
                       id={`telephones[${index}].kindof`}
-                      label="分類"
+                      placeholder="分類"
                       editable={true}
                       options={[
                         { value: "tel", label: "自宅TEL" },
@@ -754,7 +755,7 @@ const EditBlockTelephones = (props: EditBlockProp) => {
                       type="tel"
                       data={props.rec}
                       id={`telephones[${index}].number`}
-                      label="電話番号"
+                      placeholder="電話番号"
                       onChange={props.onChangeField}
                     />
                   </Grid>
@@ -857,7 +858,7 @@ const EditBlockEMails = (props: EditBlockProp) => {
                     <FieldComboBox
                       data={props.rec}
                       id={`emails[${index}].kindof`}
-                      label="分類"
+                      placeholder="分類"
                       editable={true}
                       options={[
                         { value: "home", label: "Eメール[自宅]" },
@@ -875,7 +876,7 @@ const EditBlockEMails = (props: EditBlockProp) => {
                       type="email"
                       data={props.rec}
                       id={`emails[${index}].number`}
-                      label="メールアドレス"
+                      placeholder="メールアドレス"
                       onChange={props.onChangeField}
                     />
                   </Grid>
@@ -978,7 +979,7 @@ const EditBlockWebUrls = (props: EditBlockProp) => {
                     <FieldComboBox
                       data={props.rec}
                       id={`weburls[${index}].kindof`}
-                      label="分類"
+                      placeholder="分類"
                       editable={true}
                       options={[
                         { value: "profile", label: "プロフィール" },
@@ -997,7 +998,7 @@ const EditBlockWebUrls = (props: EditBlockProp) => {
                       type="url"
                       data={props.rec}
                       id={`weburls[${index}].number`}
-                      label="URL"
+                      placeholder="URL"
                       onChange={props.onChangeField}
                     />
                   </Grid>
@@ -1057,7 +1058,7 @@ const EditBlockOneJointName = (props: OneRenmeiProps) => {
             <FieldEditBox
               data={props.rec}
               id={`joint_names[${props.index}].lastname`}
-              label="姓"
+              placeholder="姓"
               onChange={props.onChangeField}
             />
           </Grid>
@@ -1065,7 +1066,7 @@ const EditBlockOneJointName = (props: OneRenmeiProps) => {
             <FieldEditBox
               data={props.rec}
               id={`joint_names[${props.index}].firstname`}
-              label="名"
+              placeholder="名"
               onChange={props.onChangeField}
             />
           </Grid>
@@ -1073,7 +1074,7 @@ const EditBlockOneJointName = (props: OneRenmeiProps) => {
             <FieldComboBox
               data={props.rec}
               id={`joint_names[${props.index}].suffix`}
-              label="敬称"
+              placeholder="敬称"
               editable={true}
               options={suffixOptins}
               onChange={props.onChangeField}
@@ -1088,7 +1089,7 @@ const EditBlockOneJointName = (props: OneRenmeiProps) => {
             <FieldEditBox
               data={props.rec}
               id={`joint_names[${props.index}].lastkana`}
-              label="姓フリガナ"
+              placeholder="姓フリガナ"
               onChange={props.onChangeField}
             />
           </Grid>
@@ -1096,7 +1097,7 @@ const EditBlockOneJointName = (props: OneRenmeiProps) => {
             <FieldEditBox
               data={props.rec}
               id={`joint_names[${props.index}].firstkana`}
-              label="名フリガナ"
+              placeholder="名フリガナ"
               onChange={props.onChangeField}
             />
           </Grid>
@@ -1132,7 +1133,7 @@ const EditBlockOneJointName = (props: OneRenmeiProps) => {
                 <FieldDatePicker
                   data={props.rec}
                   id={`joint_names[${props.index}].birthdate`}
-                  label="誕生日"
+                  placeholder="誕生日"
                   onChange={props.onChangeField}
                 />
               </Grid>
@@ -1143,7 +1144,7 @@ const EditBlockOneJointName = (props: OneRenmeiProps) => {
                 <FieldComboBox
                   data={props.rec}
                   id={`joint_names[${props.index}].gender`}
-                  label="性別"
+                  placeholder="性別"
                   editable={false}
                   options={[
                     { value: "男性" },

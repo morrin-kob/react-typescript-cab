@@ -197,7 +197,7 @@ const ABSettings = (props: ABSettingDialogPropsType) => {
   let cbareaWidth = cxBox * 8;
 
   return (
-    <Dialog open={open} onClose={handleClose}>
+    <Dialog open={open} onClose={handleClose} maxWidth="xl">
       <DialogTitle sx={{ width: cxDlg, minWidth: "20em", maxWidth: 600 }}>
         住所録の設定 - {props.abook.name}
         <IconButton

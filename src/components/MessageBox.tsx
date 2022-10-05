@@ -98,7 +98,7 @@ const MessageBox = (props: MessageBoxProps) => {
   }
 
   return (
-    <Dialog open={open}>
+    <Dialog open={open} maxWidth="md">
       <DialogTitle
         sx={{ my: 0, height: "2.5em", backgroundColor: "var(--frmcol-dialog)" }}
       >

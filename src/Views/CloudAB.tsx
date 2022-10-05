@@ -489,7 +489,7 @@ const CABContentsInner = (props: {
           <br />
           Just sign in!
           <br />
-          Come on! Rack'n'Roll!
+          Come on! Rock'n'Roll!
         </p>
       </div>
     );
